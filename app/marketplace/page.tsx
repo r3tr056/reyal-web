@@ -200,6 +200,10 @@ export default function MarketplacePage() {
   const categories = ["all", ...filters.categories.map(cat => cat.name)]
   const allTags = filters.tags
 
+  // Filter products on client side for immediate feedback, 
+  // but main filtering is done on server side
+  const filteredProducts = products
+
   return (
     <div className="min-h-screen bg-gray-950 relative overflow-hidden">
       {/* Animated Background */}
@@ -256,67 +260,7 @@ export default function MarketplacePage() {
           ))}
         </div>
 
-  // Filter products on client side for immediate feedback, 
-  // but main filtering is done on server side
-  const filteredProducts = products
-
-  return (
-    <div className="min-h-screen bg-gray-950 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black"></div>
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-gradient-conic from-emerald-500/5 via-transparent to-green-500/5 rounded-full blur-3xl animate-spin" style={{ animationDuration: '30s' }}></div>
-      </div>
-
-      {/* Grid Pattern Overlay */}
-      <div 
-        className="absolute inset-0 opacity-[0.02]"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%2310b981' fillOpacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}
-      />
-
-
-
-      <div className="container mx-auto px-6 py-8 relative z-10">
-        {/* Hero Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center space-x-3 bg-gray-800/50 backdrop-blur-sm px-6 py-3 rounded-full border border-gray-700/30 mb-6">
-            <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-            <span className="text-sm font-medium text-gray-300">
-              Premium 3D Design Marketplace
-            </span>
-          </div>
-          <h1 className="text-5xl lg:text-6xl font-bold mb-6 text-white leading-tight">
-            Discover Amazing
-            <br />
-            <span className="bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 bg-clip-text text-transparent">
-              3D Designs
-            </span>
-          </h1>
-          <p className="text-xl text-gray-400 leading-relaxed max-w-3xl mx-auto">
-            Browse thousands of professional 3D models optimized for precision printing. 
-            From functional prototypes to artistic masterpieces.
-          </p>
-        </div>
-
-        {/* Stats Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          {[
-            { value: "50K+", label: "3D Models", icon: Layers },
-            { value: "25K+", label: "Active Designers", icon: User },
-            { value: "1M+", label: "Downloads", icon: Download },
-            { value: "4.8★", label: "Avg Rating", icon: Star }
-          ].map((stat, index) => (
-            <div key={index} className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/30 rounded-xl p-4 text-center group hover:border-emerald-500/30 transition-all duration-300">
-              <stat.icon className="h-6 w-6 mx-auto mb-2 text-emerald-400 group-hover:scale-110 transition-transform" />
-              <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
-              <div className="text-sm text-gray-400">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+        {/* Search and Filters */}
 
         {/* Search and Filters */}
         <div className="bg-gray-800/40 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-700/30 mb-8">

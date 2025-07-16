@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Header } from '@/components/layout/header'
@@ -10,7 +10,11 @@ export const metadata: Metadata = {
   generator: 'Next.js',
   keywords: '3D printing, manufacturing, prototyping, precision printing, design services',
   authors: [{ name: 'REYAL' }],
-  viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
