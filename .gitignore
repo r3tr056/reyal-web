@@ -9,6 +9,7 @@
 
 # production
 /build
+/dist
 
 # debug
 npm-debug.log*
@@ -37,3 +38,18 @@ next-env.d.ts
 
 # logs
 *.log
+
+# test results
+test-results/
+playwright-report/
+coverage/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

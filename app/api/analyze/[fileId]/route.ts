@@ -5,17 +5,18 @@ import { readFile } from 'fs/promises'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { fileId: string } }
+  { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
+    const resolvedParams = await params
+    const { fileId } = resolvedParams
+    
     const { supabase } = createClient(request)
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-
-    const { fileId } = params
 
     // Get file record from database
     const { data: fileRecord, error: fileError } = await supabase

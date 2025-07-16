@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import {
@@ -72,12 +72,25 @@ const product = {
   },
 }
 
-export default function ProductPage({ params }: { params: { id: string } }) {
+export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [selectedMaterial, setSelectedMaterial] = useState("pla")
   const [selectedColor, setSelectedColor] = useState("black")
   const [customization, setCustomization] = useState("")
+  
+  useEffect(() => {
+    params.then(setResolvedParams)
+  }, [params])
+  
+  if (!resolvedParams) {
+    return <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <span className="text-gray-400 text-lg">Loading...</span>
+    </div>
+  }
+  
+  const { id } = resolvedParams
 
   const materials = [
     { value: "pla", label: "PLA+", price: 0, description: "Standard engineering plastic, excellent surface finish" },

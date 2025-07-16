@@ -57,8 +57,8 @@ export async function GET() {
 
     // Extract unique tags
     const allTags = new Set<string>()
-    products?.forEach(product => {
-      product.tags?.forEach(tag => allTags.add(tag))
+    products?.forEach((product: any) => {
+      product.tags?.forEach((tag: string) => allTags.add(tag))
     })
 
     const uniqueTags = Array.from(allTags).sort()

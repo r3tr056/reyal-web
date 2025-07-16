@@ -103,8 +103,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply pagination
-    const offset = (filters.page - 1) * filters.limit
-    query = query.range(offset, offset + filters.limit - 1)
+    const offset = ((filters.page || 1) - 1) * (filters.limit || 20)
+    query = query.range(offset, offset + (filters.limit || 20) - 1)
 
     const { data: products, error, count } = await query
 
@@ -153,11 +153,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       products: transformedProducts,
       pagination: {
-        page: filters.page,
-        limit: filters.limit,
+        page: filters.page || 1,
+        limit: filters.limit || 20,
         total: totalCount || 0,
-        totalPages: Math.ceil((totalCount || 0) / filters.limit),
-        hasMore: offset + filters.limit < (totalCount || 0)
+        totalPages: Math.ceil((totalCount || 0) / (filters.limit || 20)),
+        hasMore: offset + (filters.limit || 20) < (totalCount || 0)
       },
       filters: filters
     })

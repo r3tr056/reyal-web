@@ -22,7 +22,7 @@ import {
   ShoppingCart,
 } from "lucide-react"
 
-export default function TrackOrderPage({ params }: { params: { orderId: string } }) {
+export default function TrackOrderPage() {
   const [order, setOrder] = useState<any>(null)
   const [trackingSteps, setTrackingSteps] = useState([
     {
@@ -78,11 +78,12 @@ export default function TrackOrderPage({ params }: { params: { orderId: string }
   useEffect(() => {
     // Load order data from localStorage
     const orders = JSON.parse(localStorage.getItem("orders") || "[]")
-    const foundOrder = orders.find((o: any) => o.id === params.orderId)
+    // Use the first order for demo purposes, or implement proper order selection
+    const foundOrder = orders.length > 0 ? orders[0] : null
     if (foundOrder) {
       setOrder(foundOrder)
     }
-  }, [params.orderId])
+  }, [])
 
   const getProgressPercentage = () => {
     const completedSteps = trackingSteps.filter((step) => step.status === "completed").length

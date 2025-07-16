@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate total amount
-    const totalAmount = cartItems.reduce((sum, item) => {
+    const totalAmount = cartItems.reduce((sum: number, item: any) => {
       return sum + (item.quotes.total_cost * item.quantity)
     }, 0)
 
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create order items
-    const orderItems = cartItems.map(item => ({
+    const orderItems = cartItems.map((item: any) => ({
       order_id: order.id,
       quote_id: item.quote_id,
       file_id: item.quotes.file_id,

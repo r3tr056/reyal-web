@@ -61,11 +61,11 @@ export function ProtectedModelViewer({
   onUnauthorizedAccess
 }: ModelViewerProps) {
   const mountRef = useRef<HTMLDivElement>(null)
-  const sceneRef = useRef<THREE.Scene>()
-  const rendererRef = useRef<THREE.WebGLRenderer>()
-  const cameraRef = useRef<THREE.PerspectiveCamera>()
-  const controlsRef = useRef<OrbitControls>()
-  const animationRef = useRef<number>()
+  const sceneRef = useRef<THREE.Scene | null>(null)
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
+  const controlsRef = useRef<OrbitControls | null>(null)
+  const animationRef = useRef<number | null>(null)
   const watermarkCanvasRef = useRef<HTMLCanvasElement>(null)
   
   const { user } = useAuth()

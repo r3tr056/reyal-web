@@ -76,7 +76,7 @@ export default function UsersPage() {
       const printJobs = (printJobsResponse.data || []) as PrintJob[]
 
       // Calculate stats for each user
-      const usersWithStats = (profiles || []).map(profile => {
+      const usersWithStats = (profiles || []).map((profile: any) => {
         const userQuotes = quotes.filter(q => q.user_id === profile.id)
         const userPrintJobs = printJobs.filter(j => j.user_id === profile.id)
         
