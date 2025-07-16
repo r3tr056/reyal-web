@@ -237,7 +237,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
-          }
+          },
+          // Use PKCE flow for better security and compatibility
+          skipBrowserRedirect: false
         }
       })
       

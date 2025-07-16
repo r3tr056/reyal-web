@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
+  const { searchParams, origin, hash } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
   const error = searchParams.get('error')
@@ -19,10 +19,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errorUrl)
   }
 
-  // Handle missing code
+  // Check if this is an implicit flow (tokens in hash) or PKCE flow (code in query)
+  // If no code parameter, redirect to client-side page to handle hash fragments
   if (!code) {
-    console.error('No authorization code provided')
-    return NextResponse.redirect(`${origin}/auth/auth-code-error?error=missing_code`)
+    console.log('No authorization code provided, checking for implicit flow tokens')
+    // For implicit flow, we need client-side JavaScript to handle the hash fragments
+    // Redirect to a client-side page that can process the tokens
+    return NextResponse.redirect(`${origin}/auth/callback/client?next=${encodeURIComponent(next)}`)
   }
 
   try {

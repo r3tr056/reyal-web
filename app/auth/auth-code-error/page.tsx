@@ -9,8 +9,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function AuthCodeErrorPage() {
   useEffect(() => {
-    // Log the error for debugging
-    console.error("Authentication code error occurred")
+    // Log the error for debugging in development only
+    if (process.env.NODE_ENV === 'development') {
+      console.error("Authentication code error occurred")
+    }
   }, [])
 
   const handleRetry = () => {
