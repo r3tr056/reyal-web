@@ -164,6 +164,218 @@ export interface Database {
           updated_at?: string
         }
       }
+      marketplace_products: {
+        Row: {
+          id: string
+          user_id: string
+          file_id: string | null
+          title: string
+          description: string | null
+          short_description: string | null
+          category: string
+          tags: string[] | null
+          price: number
+          original_price: number | null
+          currency: string
+          material_codes: string[] | null
+          print_time_hours: number | null
+          complexity: number
+          file_size_mb: number | null
+          dimensions: any | null
+          preview_images: string[] | null
+          model_file_url: string | null
+          download_count: number
+          view_count: number
+          rating_average: number
+          rating_count: number
+          is_featured: boolean
+          is_active: boolean
+          is_approved: boolean
+          license_type: string
+          supports_required: boolean
+          raft_required: boolean
+          infill_percentage: number
+          metadata: any | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          file_id?: string | null
+          title: string
+          description?: string | null
+          short_description?: string | null
+          category: string
+          tags?: string[] | null
+          price?: number
+          original_price?: number | null
+          currency?: string
+          material_codes?: string[] | null
+          print_time_hours?: number | null
+          complexity?: number
+          file_size_mb?: number | null
+          dimensions?: any | null
+          preview_images?: string[] | null
+          model_file_url?: string | null
+          download_count?: number
+          view_count?: number
+          rating_average?: number
+          rating_count?: number
+          is_featured?: boolean
+          is_active?: boolean
+          is_approved?: boolean
+          license_type?: string
+          supports_required?: boolean
+          raft_required?: boolean
+          infill_percentage?: number
+          metadata?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          file_id?: string | null
+          title?: string
+          description?: string | null
+          short_description?: string | null
+          category?: string
+          tags?: string[] | null
+          price?: number
+          original_price?: number | null
+          currency?: string
+          material_codes?: string[] | null
+          print_time_hours?: number | null
+          complexity?: number
+          file_size_mb?: number | null
+          dimensions?: any | null
+          preview_images?: string[] | null
+          model_file_url?: string | null
+          download_count?: number
+          view_count?: number
+          rating_average?: number
+          rating_count?: number
+          is_featured?: boolean
+          is_active?: boolean
+          is_approved?: boolean
+          license_type?: string
+          supports_required?: boolean
+          raft_required?: boolean
+          infill_percentage?: number
+          metadata?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      product_categories: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          description: string | null
+          icon: string | null
+          parent_id: string | null
+          sort_order: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          description?: string | null
+          icon?: string | null
+          parent_id?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          description?: string | null
+          icon?: string | null
+          parent_id?: string | null
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+        }
+      }
+      product_reviews: {
+        Row: {
+          id: string
+          product_id: string
+          user_id: string
+          rating: number
+          review_text: string | null
+          images: string[] | null
+          is_verified_purchase: boolean
+          helpful_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          user_id: string
+          rating: number
+          review_text?: string | null
+          images?: string[] | null
+          is_verified_purchase?: boolean
+          helpful_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          user_id?: string
+          rating?: number
+          review_text?: string | null
+          images?: string[] | null
+          is_verified_purchase?: boolean
+          helpful_count?: number
+          created_at?: string
+        }
+      }
+      materials: {
+        Row: {
+          id: string
+          name: string
+          code: string
+          description: string | null
+          price_per_hour: number
+          price_per_gram: number | null
+          density: number | null
+          available: boolean
+          properties: any | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          code: string
+          description?: string | null
+          price_per_hour: number
+          price_per_gram?: number | null
+          density?: number | null
+          available?: boolean
+          properties?: any | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          code?: string
+          description?: string | null
+          price_per_hour?: number
+          price_per_gram?: number | null
+          density?: number | null
+          available?: boolean
+          properties?: any | null
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

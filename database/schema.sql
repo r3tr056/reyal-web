@@ -241,3 +241,177 @@ $$ LANGUAGE plpgsql;
 -- Create sequences for quote and order numbers
 CREATE SEQUENCE IF NOT EXISTS quote_number_seq START 1;
 CREATE SEQUENCE IF NOT EXISTS order_number_seq START 1;
+
+-- Marketplace products table (for selling 3D models)
+CREATE TABLE IF NOT EXISTS marketplace_products (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) NOT NULL, -- Designer/seller
+  file_id uuid REFERENCES files(id), -- Optional: if based on uploaded file
+  title text NOT NULL,
+  description text,
+  short_description text,
+  category text NOT NULL,
+  tags text[] DEFAULT '{}',
+  price numeric(10,2) NOT NULL DEFAULT 0,
+  original_price numeric(10,2), -- For showing discounts
+  currency text DEFAULT 'INR',
+  material_codes text[] DEFAULT '{}', -- References materials.code
+  print_time_hours numeric(5,2),
+  complexity integer CHECK (complexity >= 1 AND complexity <= 5) DEFAULT 3,
+  file_size_mb numeric(8,2),
+  dimensions jsonb, -- {length, width, height} in mm
+  preview_images text[] DEFAULT '{}', -- Array of image URLs
+  model_file_url text, -- URL to downloadable model file
+  download_count integer DEFAULT 0,
+  view_count integer DEFAULT 0,
+  rating_average numeric(3,2) DEFAULT 0,
+  rating_count integer DEFAULT 0,
+  is_featured boolean DEFAULT false,
+  is_active boolean DEFAULT true,
+  is_approved boolean DEFAULT false, -- For moderation
+  license_type text DEFAULT 'standard', -- standard, commercial, royalty_free
+  supports_required boolean DEFAULT false,
+  raft_required boolean DEFAULT false,
+  infill_percentage integer DEFAULT 20,
+  metadata jsonb DEFAULT '{}', -- Additional product data
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Product reviews table
+CREATE TABLE IF NOT EXISTS product_reviews (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  product_id uuid REFERENCES marketplace_products(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES auth.users(id) NOT NULL,
+  rating integer CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+  review_text text,
+  images text[] DEFAULT '{}',
+  is_verified_purchase boolean DEFAULT false,
+  helpful_count integer DEFAULT 0,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(product_id, user_id) -- One review per user per product
+);
+
+-- Product categories table
+CREATE TABLE IF NOT EXISTS product_categories (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  name text UNIQUE NOT NULL,
+  slug text UNIQUE NOT NULL,
+  description text,
+  icon text, -- Icon name or URL
+  parent_id uuid REFERENCES product_categories(id), -- For subcategories
+  sort_order integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Product downloads tracking
+CREATE TABLE IF NOT EXISTS product_downloads (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  product_id uuid REFERENCES marketplace_products(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES auth.users(id) NOT NULL,
+  download_type text DEFAULT 'purchase', -- purchase, free, preview
+  ip_address inet,
+  user_agent text,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Wishlist/favorites table
+CREATE TABLE IF NOT EXISTS user_wishlists (
+  id uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) NOT NULL,
+  product_id uuid REFERENCES marketplace_products(id) ON DELETE CASCADE NOT NULL,
+  created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+  UNIQUE(user_id, product_id)
+);
+
+-- Insert default product categories
+INSERT INTO product_categories (name, slug, description, icon, sort_order) VALUES
+('Accessories', 'accessories', 'Phone stands, organizers, and everyday items', 'smartphone', 1),
+('Office & Workspace', 'office', 'Desk organizers, cable management, and office tools', 'briefcase', 2),
+('Figurines & Models', 'figurines', 'Decorative figures, miniatures, and collectibles', 'trophy', 3),
+('Home & Living', 'home', 'Household items, decor, and practical home solutions', 'home', 4),
+('Gaming & Entertainment', 'gaming', 'Gaming accessories, dice, and entertainment items', 'gamepad-2', 5),
+('Tools & Hardware', 'tools', 'Practical tools, fixtures, and mechanical parts', 'wrench', 6),
+('Art & Sculpture', 'art', 'Artistic pieces, vases, and decorative sculptures', 'palette', 7),
+('Automotive', 'automotive', 'Car accessories, mounts, and automotive tools', 'car', 8),
+('Educational', 'educational', 'Learning models, puzzles, and educational tools', 'graduation-cap', 9),
+('Prototyping', 'prototyping', 'Engineering prototypes and functional parts', 'cpu', 10)
+ON CONFLICT (slug) DO NOTHING;
+
+-- RLS Policies for marketplace tables
+
+-- Marketplace products: Public read, owners can modify
+ALTER TABLE marketplace_products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view active approved products" ON marketplace_products 
+  FOR SELECT USING (is_active = true AND is_approved = true);
+CREATE POLICY "Users can view own products" ON marketplace_products 
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own products" ON marketplace_products 
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own products" ON marketplace_products 
+  FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage all products" ON marketplace_products 
+  FOR ALL USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true));
+
+-- Product reviews: Public read, authenticated users can add
+ALTER TABLE product_reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view reviews" ON product_reviews FOR SELECT USING (true);
+CREATE POLICY "Users can add reviews" ON product_reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own reviews" ON product_reviews FOR UPDATE USING (auth.uid() = user_id);
+
+-- Product categories: Public read
+ALTER TABLE product_categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can view categories" ON product_categories FOR SELECT USING (is_active = true);
+
+-- Product downloads: Users can view own downloads
+ALTER TABLE product_downloads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own downloads" ON product_downloads FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "System can insert downloads" ON product_downloads FOR INSERT WITH CHECK (true);
+
+-- Wishlists: Users can manage own wishlist
+ALTER TABLE user_wishlists ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own wishlist" ON user_wishlists FOR ALL USING (auth.uid() = user_id);
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_marketplace_products_category ON marketplace_products(category);
+CREATE INDEX IF NOT EXISTS idx_marketplace_products_user_id ON marketplace_products(user_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_products_active_approved ON marketplace_products(is_active, is_approved);
+CREATE INDEX IF NOT EXISTS idx_marketplace_products_featured ON marketplace_products(is_featured);
+CREATE INDEX IF NOT EXISTS idx_marketplace_products_rating ON marketplace_products(rating_average DESC);
+CREATE INDEX IF NOT EXISTS idx_marketplace_products_created_at ON marketplace_products(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_marketplace_products_price ON marketplace_products(price);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_downloads_product_id ON product_downloads(product_id);
+CREATE INDEX IF NOT EXISTS idx_user_wishlists_user_id ON user_wishlists(user_id);
+
+-- Create trigger for marketplace products updated_at
+CREATE TRIGGER set_timestamp_marketplace_products BEFORE UPDATE ON marketplace_products FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+
+-- Function to update product rating when review is added/updated/deleted
+CREATE OR REPLACE FUNCTION update_product_rating()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Update the product's rating average and count
+  UPDATE marketplace_products 
+  SET 
+    rating_average = (
+      SELECT COALESCE(AVG(rating)::numeric(3,2), 0) 
+      FROM product_reviews 
+      WHERE product_id = COALESCE(NEW.product_id, OLD.product_id)
+    ),
+    rating_count = (
+      SELECT COUNT(*) 
+      FROM product_reviews 
+      WHERE product_id = COALESCE(NEW.product_id, OLD.product_id)
+    )
+  WHERE id = COALESCE(NEW.product_id, OLD.product_id);
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create triggers for rating updates
+CREATE TRIGGER update_product_rating_on_insert AFTER INSERT ON product_reviews FOR EACH ROW EXECUTE FUNCTION update_product_rating();
+CREATE TRIGGER update_product_rating_on_update AFTER UPDATE ON product_reviews FOR EACH ROW EXECUTE FUNCTION update_product_rating();
+CREATE TRIGGER update_product_rating_on_delete AFTER DELETE ON product_reviews FOR EACH ROW EXECUTE FUNCTION update_product_rating();
