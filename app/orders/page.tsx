@@ -23,6 +23,8 @@ import {
   Calendar,
   MapPin,
 } from "lucide-react"
+import { PageTransition } from "@/components/page-transition"
+import { motion } from "framer-motion"
 
 const mockOrders = [
   {
@@ -100,15 +102,15 @@ export default function OrdersPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
-        return "bg-green-100 text-green-800"
+        return "bg-green-500/20 text-green-400 border-green-500/30"
       case "shipped":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
       case "processing":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-red-500/20 text-red-400 border-red-500/30"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
   }
 
@@ -137,12 +139,12 @@ export default function OrdersPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <Card className="w-96">
+      <div className="flex items-center justify-center py-32">
+        <Card className="w-96 bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl">
           <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Please Sign In</h2>
-            <p className="text-gray-600 mb-6">You need to be logged in to view your orders.</p>
-            <Button asChild>
+            <h2 className="text-2xl font-bold mb-4 text-white">Please Sign In</h2>
+            <p className="text-gray-400 mb-6">You need to be logged in to view your orders.</p>
+            <Button asChild className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700">
               <Link href="/login">Sign In</Link>
             </Button>
           </CardContent>
@@ -152,170 +154,191 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8 pt-24">
-        <div className="mb-8">
-          <Button variant="ghost" size="sm" className="mb-4" asChild>
+    <PageTransition>
+      <div className="container mx-auto px-4 py-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <Button variant="ghost" size="sm" className="mb-4 text-gray-300 hover:text-white" asChild>
             <Link href="/">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
             My Orders
           </h1>
-          <p className="text-gray-600">Track and manage your 3D printing orders</p>
-        </div>
+          <p className="text-gray-400">Track and manage your 3D printing orders</p>
+        </motion.div>
 
         {/* Filters */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl mb-8">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-center">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search orders by ID or product name..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl mb-8">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search orders by ID or product name..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 bg-gray-700/50 border-gray-600 text-gray-300"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-48 bg-gray-700/50 border-gray-600 text-gray-300">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-700">
+                    <SelectItem value="all">All Orders</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="shipped">Shipped</SelectItem>
+                    <SelectItem value="delivered">Delivered</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Orders</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="shipped">Shipped</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Orders List */}
         <div className="space-y-6">
-          {filteredOrders.map((order) => (
-            <Card
+          {filteredOrders.map((order, index) => (
+            <motion.div
               key={order.id}
-              className="bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + index * 0.1 }}
             >
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
-                  <div className="flex items-center space-x-4 mb-4 lg:mb-0">
+              <Card className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
+                    <div className="flex items-center space-x-4 mb-4 lg:mb-0">
+                      <div>
+                        <h3 className="text-lg font-bold text-white">{order.id}</h3>
+                        <div className="flex items-center text-sm text-gray-400 mt-1">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {new Date(order.date).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1 border`}>
+                        {getStatusIcon(order.status)}
+                        <span className="capitalize">{order.status}</span>
+                      </Badge>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl font-bold text-emerald-400">₹{order.total}</span>
+                      <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)} className="border-gray-600 text-gray-300 hover:bg-gray-700/50">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-lg font-bold">{order.id}</h3>
-                      <div className="flex items-center text-sm text-gray-600 mt-1">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        {new Date(order.date).toLocaleDateString()}
+                      <h4 className="font-semibold mb-2 text-white">Items ({order.items.length})</h4>
+                      <div className="space-y-2">
+                        {order.items.map((item, index) => (
+                          <div key={index} className="flex justify-between items-center text-sm">
+                            <span className="text-gray-300">
+                              {item.name} × {item.quantity}
+                            </span>
+                            <span className="font-medium text-emerald-400">₹{item.price * item.quantity}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1`}>
-                      {getStatusIcon(order.status)}
-                      <span className="capitalize">{order.status}</span>
-                    </Badge>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl font-bold text-purple-600">₹{order.total}</span>
-                    <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h4 className="font-semibold mb-2">Items ({order.items.length})</h4>
-                    <div className="space-y-2">
-                      {order.items.map((item, index) => (
-                        <div key={index} className="flex justify-between items-center text-sm">
-                          <span>
-                            {item.name} × {item.quantity}
-                          </span>
-                          <span className="font-medium">₹{item.price * item.quantity}</span>
+                    <div>
+                      <h4 className="font-semibold mb-2 text-white">Delivery Info</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-start">
+                          <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-400" />
+                          <span className="text-gray-300">{order.shippingAddress}</span>
                         </div>
-                      ))}
+                        {order.trackingNumber && (
+                          <div className="flex items-center">
+                            <Truck className="h-4 w-4 mr-2 text-gray-400" />
+                            <span className="text-gray-300">Tracking: {order.trackingNumber}</span>
+                          </div>
+                        )}
+                        {order.estimatedDelivery && (
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                            <span className="text-gray-300">
+                              {order.status === "delivered" ? "Delivered" : "Expected"}:{" "}
+                              {new Date(order.actualDelivery || order.estimatedDelivery).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Delivery Info</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-start">
-                        <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-400" />
-                        <span className="text-gray-600">{order.shippingAddress}</span>
-                      </div>
+
+                  <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-700">
+                    <div className="flex space-x-3">
+                      {order.status === "delivered" && (
+                        <Button variant="outline" size="sm" className="border-gray-600 text-gray-300 hover:bg-gray-700/50">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download Invoice
+                        </Button>
+                      )}
                       {order.trackingNumber && (
-                        <div className="flex items-center">
-                          <Truck className="h-4 w-4 mr-2 text-gray-400" />
-                          <span className="text-gray-600">Tracking: {order.trackingNumber}</span>
-                        </div>
-                      )}
-                      {order.estimatedDelivery && (
-                        <div className="flex items-center">
-                          <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                          <span className="text-gray-600">
-                            {order.status === "delivered" ? "Delivered" : "Expected"}:{" "}
-                            {new Date(order.actualDelivery || order.estimatedDelivery).toLocaleDateString()}
-                          </span>
-                        </div>
+                        <Button variant="outline" size="sm" asChild className="border-gray-600 text-gray-300 hover:bg-gray-700/50">
+                          <Link href={`/track/${order.id}`}>
+                            <Truck className="h-4 w-4 mr-2" />
+                            Track Package
+                          </Link>
+                        </Button>
                       )}
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center mt-6 pt-4 border-t">
-                  <div className="flex space-x-3">
                     {order.status === "delivered" && (
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Invoice
-                      </Button>
-                    )}
-                    {order.trackingNumber && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/track/${order.id}`}>
-                          <Truck className="h-4 w-4 mr-2" />
-                          Track Package
-                        </Link>
+                      <Button
+                        size="sm"
+                        className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+                      >
+                        Reorder
                       </Button>
                     )}
                   </div>
-                  {order.status === "delivered" && (
-                    <Button
-                      size="sm"
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                    >
-                      Reorder
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
         </div>
 
         {filteredOrders.length === 0 && (
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
-            <CardContent className="p-12 text-center">
-              <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No Orders Found</h3>
-              <p className="text-gray-600 mb-6">
-                {searchTerm || statusFilter !== "all"
-                  ? "No orders match your current filters."
-                  : "You haven't placed any orders yet."}
-              </p>
-              <Button asChild>
-                <Link href="/marketplace">Start Shopping</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl">
+              <CardContent className="p-12 text-center">
+                <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No Orders Found</h3>
+                <p className="text-gray-400 mb-6">
+                  {searchTerm || statusFilter !== "all"
+                    ? "No orders match your current filters."
+                    : "You haven't placed any orders yet."}
+                </p>
+                <Button asChild className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700">
+                  <Link href="/marketplace">Start Shopping</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
       </div>
-    </div>
+    </PageTransition>
   )
 }

@@ -28,6 +28,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { motion } from "framer-motion"
+import { PageTransition } from "@/components/page-transition"
 
 // Mock product data
 const product = {
@@ -102,18 +104,20 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950">
-      {/* Back to catalog breadcrumb */}
-      <div className="container mx-auto px-6 pt-6">
-        <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white mb-4" asChild>
-          <Link href="/marketplace">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Catalog
-          </Link>
-        </Button>
-      </div>
-
+    <PageTransition>
       <div className="container mx-auto px-6 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Button variant="ghost" size="sm" className="text-gray-300 hover:text-white mb-4" asChild>
+            <Link href="/marketplace">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Catalog
+            </Link>
+          </Button>
+        </motion.div>
         <div className="grid lg:grid-cols-2 gap-12 mb-8">
           {/* Product Images */}
           <div className="space-y-4">
@@ -464,6 +468,6 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </PageTransition>
   )
 }

@@ -29,6 +29,8 @@ import {
   Award,
   ArrowRight,
 } from "lucide-react"
+import { PageTransition } from "@/components/page-transition"
+import { motion } from "framer-motion"
 
 export default function ContactPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -65,10 +67,7 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950">
-      {/* Header */}
-
-
+    <PageTransition>
       {/* Hero Section */}
       <section className="py-20 relative overflow-hidden">
         {/* Background Pattern */}
@@ -88,7 +87,12 @@ export default function ContactPage() {
         </div>
 
         <div className="container mx-auto px-6 relative z-10">
-          <div className="text-center mb-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-center mb-16"
+          >
             <div className="inline-flex items-center space-x-3 bg-gray-800/80 backdrop-blur-sm px-6 py-3 rounded-full mb-8 border border-gray-700/50">
               <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
               <span className="text-sm font-medium text-gray-300">Professional Manufacturing Support</span>
@@ -109,7 +113,12 @@ export default function ContactPage() {
             </p>
 
             {/* Quick Contact Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto mb-16">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto mb-16"
+            >
               {[
                 { icon: Clock, label: "Response Time", value: "< 2 Hours", color: "text-emerald-400" },
                 { icon: Users, label: "Expert Engineers", value: "15+", color: "text-green-400" },
@@ -124,12 +133,17 @@ export default function ContactPage() {
                   <div className="text-sm text-gray-400">{stat.label}</div>
                 </div>
               ))}
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <div className="grid lg:grid-cols-3 gap-8 mb-16">
             {/* Contact Methods */}
-            <div className="lg:col-span-1 space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="lg:col-span-1 space-y-6"
+            >
               {/* Phone Contact */}
               <Card className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 group">
                 <CardContent className="p-6">
@@ -229,10 +243,15 @@ export default function ContactPage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </motion.div>
 
             {/* Contact Form */}
-            <div className="lg:col-span-2">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+              className="lg:col-span-2"
+            >
               <Card className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl">
                 <CardHeader>
                   <div className="flex items-center space-x-3 mb-4">
@@ -393,16 +412,26 @@ export default function ContactPage() {
                   </form>
                 </CardContent>
               </Card>
-            </div>
+            </motion.div>
           </div>
 
           {/* FAQ Section */}
-          <div className="text-center mb-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="text-center mb-8"
+          >
             <h2 className="text-4xl font-bold text-white mb-4">Technical FAQ</h2>
             <p className="text-gray-400 mb-8 text-lg">Common questions about our manufacturing capabilities</p>
-          </div>
+          </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16"
+          >
             {[
               {
                 question: "What file formats do you accept?",
@@ -452,10 +481,15 @@ export default function ContactPage() {
                 </CardContent>
               </Card>
             ))}
-          </div>
+          </motion.div>
 
           {/* CTA Section */}
-          <div className="text-center mt-16">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="text-center"
+          >
             <Card className="bg-gradient-to-br from-emerald-600/20 to-green-600/20 backdrop-blur-xl border border-emerald-500/30 shadow-2xl">
               <CardContent className="p-12">
                 <h3 className="text-3xl font-bold text-white mb-4">Ready to Start Manufacturing?</h3>
@@ -485,107 +519,9 @@ export default function ContactPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gradient-to-br from-gray-950 via-gray-900 to-gray-800 border-t border-gray-800/50 py-16 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-green-500/5"></div>
-        </div>
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
-                  <Layers className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <span className="text-xl font-bold text-white">REYAL</span>
-                  <div className="text-xs text-emerald-400 font-medium tracking-wider">3D PRINTING</div>
-                </div>
-              </div>
-              <p className="text-gray-400 leading-relaxed">
-                Professional 3D printing services for engineers, designers, and manufacturers. Precision manufacturing
-                with industrial-grade quality and reliability.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-bold mb-6 text-lg text-white">Services</h3>
-              <ul className="space-y-3 text-gray-400">
-                <li>
-                  <Link href="/?upload=true" className="hover:text-emerald-400 transition-colors">
-                    Rapid Prototyping
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/marketplace" className="hover:text-emerald-400 transition-colors">
-                    Production Runs
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-emerald-400 transition-colors">
-                    Design Optimization
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-emerald-400 transition-colors">
-                    Material Consulting
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-bold mb-6 text-lg text-white">Industries</h3>
-              <ul className="space-y-3 text-gray-400">
-                <li>
-                  <Link href="#" className="hover:text-emerald-400 transition-colors">
-                    Automotive
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-emerald-400 transition-colors">
-                    Aerospace
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-emerald-400 transition-colors">
-                    Medical Devices
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-emerald-400 transition-colors">
-                    Consumer Products
-                  </Link>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-bold mb-6 text-lg text-white">Contact</h3>
-              <div className="space-y-3 text-gray-400">
-                <p>engineering@reyal.in</p>
-                <p>+91 98765 43210</p>
-                <p>Mumbai, Maharashtra</p>
-                <div className="flex space-x-4 mt-4">
-                  <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors cursor-pointer">
-                    <span className="text-xs">Li</span>
-                  </div>
-                  <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors cursor-pointer">
-                    <span className="text-xs">Tw</span>
-                  </div>
-                  <div className="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-colors cursor-pointer">
-                    <span className="text-xs">Yt</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-700 mt-12 pt-8 text-center text-gray-500">
-            <p>© 2024 REYAL 3D Printing. All rights reserved. Professional manufacturing solutions.</p>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </PageTransition>
   )
 }
