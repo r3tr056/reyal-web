@@ -15,8 +15,14 @@ import { CreditCard, Truck, Shield, ArrowLeft, Lock, CheckCircle, Package, MapPi
 import { PageTransition } from "@/components/page-transition"
 import { motion } from "framer-motion"
 
+interface UserData {
+  name?: string
+  email?: string
+  phone?: string
+}
+
 export default function CheckoutPage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserData | null>(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderPlaced, setOrderPlaced] = useState(false)

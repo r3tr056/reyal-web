@@ -2,21 +2,30 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ShoppingCart, User, Package, Edit, Save, Camera, CreditCard, Shield, Bell, ArrowLeft } from "lucide-react"
+import { User, Package, Edit, Save, Camera, CreditCard, Shield, Bell, ArrowLeft } from "lucide-react"
 import { PageTransition } from "@/components/page-transition"
 import { motion } from "framer-motion"
 
+interface UserData {
+  name?: string
+  email?: string
+  phone?: string
+  address?: string
+  city?: string
+  state?: string
+  pincode?: string
+  bio?: string
+}
+
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<UserData | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     firstName: "",

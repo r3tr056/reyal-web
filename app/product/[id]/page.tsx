@@ -12,12 +12,11 @@ import {
   Truck,
   Shield,
   RotateCcw,
-  Layers,
   CheckCircle,
   Clock,
-  Package,
   Zap,
   Settings,
+  Package,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -74,7 +73,7 @@ const product = {
   },
 }
 
-export default function ProductPage({ params }: { params: { id: string } }) {
+export default function ProductPage() {
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [selectedMaterial, setSelectedMaterial] = useState("pla")

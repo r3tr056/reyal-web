@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
-  ShoppingCart,
   Package,
   Search,
   Filter,
@@ -26,7 +24,30 @@ import {
 import { PageTransition } from "@/components/page-transition"
 import { motion } from "framer-motion"
 
-const mockOrders = [
+interface OrderItem {
+  name: string
+  quantity: number
+  price: number
+}
+
+interface Order {
+  id: string
+  date: string
+  status: string
+  total: number
+  items: OrderItem[]
+  shippingAddress: string
+  trackingNumber: string | null
+  estimatedDelivery: string | null
+  actualDelivery: string | null
+}
+
+interface UserData {
+  name?: string
+  email?: string
+}
+
+const mockOrders: Order[] = [
   {
     id: "ORD-2024-001",
     date: "2024-01-15",
@@ -80,11 +101,10 @@ const mockOrders = [
 ]
 
 export default function OrdersPage() {
-  const [user, setUser] = useState<any>(null)
-  const [orders, setOrders] = useState(mockOrders)
+  const [user, setUser] = useState<UserData | null>(null)
+  const [orders, setOrders] = useState<Order[]>(mockOrders)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [selectedOrder, setSelectedOrder] = useState<any>(null)
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user")

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,6 +9,20 @@ import { Badge } from "@/components/ui/badge"
 import { Layers, Package, Zap, ArrowLeft, Search, Truck, Clock, CheckCircle, MapPin, Calendar } from "lucide-react"
 import { PageTransition } from "@/components/page-transition"
 import { motion } from "framer-motion"
+
+interface TrackingEvent {
+  status: string
+  date: string
+  completed: boolean
+}
+
+interface TrackingData {
+  status: string
+  trackingNumber: string
+  estimatedDelivery: string
+  actualDelivery?: string
+  timeline: TrackingEvent[]
+}
 
 const mockTrackingData = {
   "ORD-2024-001": {
@@ -30,7 +44,7 @@ const mockTrackingData = {
 
 export default function TrackPage() {
   const [orderId, setOrderId] = useState("")
-  const [trackingData, setTrackingData] = useState<any>(null)
+  const [trackingData, setTrackingData] = useState<TrackingData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -317,7 +331,7 @@ export default function TrackPage() {
             <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-white mb-2">Ready to Track</h3>
             <p className="text-gray-400 mb-6 max-w-md mx-auto">
-              Enter your order ID above to get real-time tracking updates. For demo purposes, try "ORD-2024-001".
+              Enter your order ID above to get real-time tracking updates. For demo purposes, try &quot;ORD-2024-001&quot;.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700/50" asChild>
