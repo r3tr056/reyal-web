@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Header } from '@/components/layout/header'
+import { Footer } from '@/components/layout/footer'
 import { ThemeProvider } from '@/components/theme-provider'
 
 export const metadata: Metadata = {
@@ -25,11 +26,12 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <div className="min-h-screen bg-gray-950">
+            <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950 flex flex-col">
               <Header />
-              <main>
+              <main className="flex-1">
                 {children}
               </main>
+              <Footer />
             </div>
           </AuthProvider>
         </ThemeProvider>
