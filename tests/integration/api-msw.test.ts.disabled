@@ -1,0 +1,463 @@
+import { server, mockFile, mockAnalysis, mockMaterial, mockQuote, mockOrder, mockCartItem } from '../mocks/api'
+import { NextRequest } from 'next/server'
+
+// Start server before all tests
+beforeAll(() => server.listen())
+
+// Reset handlers after each test
+afterEach(() => server.resetHandlers())
+
+// Close server after all tests
+afterAll(() => server.close())
+
+describe('API Routes Integration Tests', () => {
+  describe('/api/health', () => {
+    it('should return health status', async () => {
+      const response = await fetch('/api/health')
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data).toHaveProperty('status', 'healthy')
+      expect(data).toHaveProperty('timestamp')
+      expect(data).toHaveProperty('uptime')
+      expect(data).toHaveProperty('memory')
+      expect(data).toHaveProperty('env', 'test')
+    })
+  })
+
+  describe('/api/upload', () => {
+    it('should upload a valid STL file', async () => {
+      const file = new File(['mock file content'], 'test.stl', {
+        type: 'application/vnd.ms-pki.stl',
+        size: 1024
+      })
+      
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.file).toMatchObject({
+        id: expect.any(String),
+        filename: expect.any(String),
+        original_filename: 'test.stl',
+        file_size: expect.any(Number),
+        file_type: '.stl',
+        is_analyzed: false
+      })
+    })
+
+    it('should reject files that are too large', async () => {
+      const file = new File(['x'.repeat(51 * 1024 * 1024)], 'large.stl', {
+        type: 'application/vnd.ms-pki.stl',
+        size: 51 * 1024 * 1024
+      })
+      
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toContain('File too large')
+    })
+
+    it('should reject requests without file', async () => {
+      const formData = new FormData()
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('No file provided')
+    })
+  })
+
+  describe('/api/analyze/:fileId', () => {
+    it('should analyze an uploaded file', async () => {
+      const response = await fetch('/api/analyze/file-123', {
+        method: 'POST'
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.analysis).toMatchObject({
+        volume: expect.any(Number),
+        surfaceArea: expect.any(Number),
+        dimensions: {
+          x: expect.any(Number),
+          y: expect.any(Number),
+          z: expect.any(Number)
+        },
+        complexity: expect.any(Number),
+        supportRequired: expect.any(Boolean),
+        printTime: expect.any(Number),
+        triangleCount: expect.any(Number),
+        vertexCount: expect.any(Number),
+        boundingBox: expect.any(Object)
+      })
+    })
+
+    it('should return 404 for non-existent file', async () => {
+      const response = await fetch('/api/analyze/non-existent', {
+        method: 'POST'
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(404)
+      expect(data.error).toBe('File not found')
+    })
+  })
+
+  describe('/api/calculate-cost', () => {
+    it('should calculate cost for valid inputs', async () => {
+      const requestBody = {
+        fileId: 'file-123',
+        settings: {
+          material: 'PLA',
+          color: 'white',
+          quality: 'standard',
+          infill: 20,
+          supports: true,
+          postProcessing: false,
+          urgency: 'standard'
+        }
+      }
+
+      const response = await fetch('/api/calculate-cost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.costBreakdown).toMatchObject({
+        materialCost: expect.any(Number),
+        supportCost: expect.any(Number),
+        laborCost: expect.any(Number),
+        machineTime: expect.any(Number),
+        postProcessingCost: expect.any(Number),
+        urgencyCost: expect.any(Number),
+        baseCost: expect.any(Number),
+        taxes: expect.any(Number),
+        total: expect.any(Number)
+      })
+      expect(data.estimatedDays).toBeGreaterThan(0)
+      expect(data.material).toHaveProperty('name')
+      expect(data.material).toHaveProperty('properties')
+    })
+
+    it('should return 400 for missing required fields', async () => {
+      const requestBody = {
+        fileId: 'file-123'
+        // missing settings
+      }
+
+      const response = await fetch('/api/calculate-cost', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toContain('Missing required fields')
+    })
+  })
+
+  describe('/api/generate-quote', () => {
+    it('should generate quote for valid inputs', async () => {
+      const requestBody = {
+        fileId: 'file-123',
+        settings: {
+          material: 'PLA',
+          color: 'white',
+          quality: 'standard',
+          infill: 20,
+          supports: true,
+          postProcessing: false,
+          urgency: 'standard'
+        },
+        costBreakdown: {
+          materialCost: 10.5,
+          supportCost: 2.1,
+          laborCost: 70,
+          machineTime: 200,
+          postProcessingCost: 0,
+          urgencyCost: 0,
+          baseCost: 282.6,
+          taxes: 50.87,
+          total: 333.47
+        }
+      }
+
+      const response = await fetch('/api/generate-quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(data.quote).toMatchObject({
+        id: expect.any(String),
+        user_id: expect.any(String),
+        file_id: expect.any(String),
+        quote_number: expect.stringMatching(/^Q\d{8}-\d{4}$/),
+        settings: expect.any(Object),
+        cost_breakdown: expect.any(Object),
+        total_cost: expect.any(Number),
+        estimated_days: expect.any(Number),
+        status: 'pending',
+        valid_until: expect.any(String)
+      })
+    })
+
+    it('should return 400 for missing required fields', async () => {
+      const requestBody = {
+        fileId: 'file-123'
+        // missing settings and costBreakdown
+      }
+
+      const response = await fetch('/api/generate-quote', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      })
+      
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Missing required fields')
+    })
+  })
+
+  describe('/api/materials', () => {
+    it('should return list of available materials', async () => {
+      const response = await fetch('/api/materials')
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(Array.isArray(data.materials)).toBe(true)
+      expect(data.materials[0]).toMatchObject({
+        id: expect.any(String),
+        name: expect.any(String),
+        code: expect.any(String),
+        price_per_hour: expect.any(Number),
+        available: true,
+        properties: expect.any(Object)
+      })
+    })
+  })
+
+  describe('/api/cart', () => {
+    describe('GET /api/cart', () => {
+      it('should return user cart items', async () => {
+        const response = await fetch('/api/cart')
+        const data = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(data.success).toBe(true)
+        expect(Array.isArray(data.items)).toBe(true)
+        if (data.items.length > 0) {
+          expect(data.items[0]).toMatchObject({
+            id: expect.any(String),
+            user_id: expect.any(String),
+            quote_id: expect.any(String),
+            quantity: expect.any(Number),
+            created_at: expect.any(String)
+          })
+        }
+      })
+    })
+
+    describe('POST /api/cart', () => {
+      it('should add item to cart', async () => {
+        const requestBody = {
+          quoteId: 'quote-123',
+          quantity: 2
+        }
+
+        const response = await fetch('/api/cart', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        })
+        
+        const data = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(data.success).toBe(true)
+        expect(data.item).toMatchObject({
+          quote_id: 'quote-123',
+          quantity: 2
+        })
+      })
+
+      it('should return 400 for missing quote ID', async () => {
+        const requestBody = {
+          quantity: 1
+          // missing quoteId
+        }
+
+        const response = await fetch('/api/cart', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        })
+        
+        const data = await response.json()
+
+        expect(response.status).toBe(400)
+        expect(data.error).toBe('Quote ID is required')
+      })
+    })
+
+    describe('DELETE /api/cart', () => {
+      it('should remove item from cart', async () => {
+        const response = await fetch('/api/cart?itemId=cart-123', {
+          method: 'DELETE'
+        })
+        
+        const data = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(data.success).toBe(true)
+        expect(data.message).toBe('Item removed from cart')
+      })
+
+      it('should return 400 for missing item ID', async () => {
+        const response = await fetch('/api/cart', {
+          method: 'DELETE'
+        })
+        
+        const data = await response.json()
+
+        expect(response.status).toBe(400)
+        expect(data.error).toBe('Item ID is required')
+      })
+    })
+  })
+
+  describe('/api/orders', () => {
+    describe('GET /api/orders', () => {
+      it('should return user orders', async () => {
+        const response = await fetch('/api/orders')
+        const data = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(data.success).toBe(true)
+        expect(Array.isArray(data.orders)).toBe(true)
+        if (data.orders.length > 0) {
+          expect(data.orders[0]).toMatchObject({
+            id: expect.any(String),
+            user_id: expect.any(String),
+            order_number: expect.stringMatching(/^ORD\d{8}-\d{4}$/),
+            status: expect.any(String),
+            total_amount: expect.any(Number),
+            payment_status: expect.any(String),
+            shipping_address: expect.any(Object),
+            created_at: expect.any(String)
+          })
+        }
+      })
+    })
+
+    describe('POST /api/orders', () => {
+      it('should create new order', async () => {
+        const requestBody = {
+          cartItems: ['cart-123'],
+          shippingAddress: {
+            full_name: 'Test User',
+            address_line_1: '123 Test Street',
+            city: 'Test City',
+            state: 'Test State',
+            postal_code: '12345',
+            country: 'India',
+            phone: '+91 9876543210'
+          },
+          paymentMethod: 'card'
+        }
+
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        })
+        
+        const data = await response.json()
+
+        expect(response.status).toBe(200)
+        expect(data.success).toBe(true)
+        expect(data.order).toMatchObject({
+          id: expect.any(String),
+          order_number: expect.stringMatching(/^ORD\d{8}-\d{4}$/),
+          status: 'pending',
+          total_amount: expect.any(Number),
+          payment_status: 'pending',
+          shipping_address: expect.any(Object)
+        })
+      })
+
+      it('should return 400 for missing required fields', async () => {
+        const requestBody = {
+          cartItems: ['cart-123']
+          // missing shippingAddress
+        }
+
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestBody)
+        })
+        
+        const data = await response.json()
+
+        expect(response.status).toBe(400)
+        expect(data.error).toBe('Missing required fields')
+      })
+    })
+  })
+})
