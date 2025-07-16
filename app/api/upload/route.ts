@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { ServerModelProcessor } from '@/lib/upload/server-file-processor'
+import path from 'path'
+import { writeFile, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
+
+// Allowed file types for 3D models
+const ALLOWED_TYPES = ['.stl', '.obj', '.3mf', '.ply']
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
 
 export async function POST(request: NextRequest) {
   try {
-    const { supabase, response } = createClient(request)
+    const { supabase } = createClient(request)
     
+    // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -18,54 +25,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    const validation = ServerModelProcessor.validateFile(file.name, file.size)
-    if (!validation.isValid) {
+    // Validate file
+    const fileExtension = path.extname(file.name).toLowerCase()
+    if (!ALLOWED_TYPES.includes(fileExtension)) {
       return NextResponse.json({ 
-        error: 'File validation failed', 
-        details: validation.errors 
+        error: 'Invalid file type. Allowed types: ' + ALLOWED_TYPES.join(', ')
       }, { status: 400 })
     }
 
-    const fileId = crypto.randomUUID()
-    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
-    const filename = `${fileId}${fileExtension}`
-    const storagePath = `${user.id}/${filename}`
-
-    const fileBuffer = await file.arrayBuffer()
-
-    const { error: uploadError } = await supabase.storage
-      .from('3d-models')
-      .upload(storagePath, fileBuffer, {
-        contentType: file.type || 'application/octet-stream',
-      })
-
-    if (uploadError) {
+    if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json({ 
-        error: 'File upload failed', 
-        details: uploadError.message 
-      }, { status: 500 })
+        error: `File too large. Maximum size: ${MAX_FILE_SIZE / 1024 / 1024}MB`
+      }, { status: 400 })
     }
 
+    // Generate unique filename
+    const fileId = crypto.randomUUID()
+    const filename = `${fileId}${fileExtension}`
+    const uploadDir = path.join(process.cwd(), 'uploads', user.id)
+    const filePath = path.join(uploadDir, filename)
+
+    // Create upload directory if it doesn't exist
+    if (!existsSync(uploadDir)) {
+      await mkdir(uploadDir, { recursive: true })
+    }
+
+    // Convert file to buffer and save
+    const buffer = Buffer.from(await file.arrayBuffer())
+    await writeFile(filePath, buffer)
+
+    // Save file metadata to database
     const { data: dbFile, error: dbError } = await supabase
-      .from('uploaded_files')
+      .from('files')
       .insert({
         id: fileId,
         user_id: user.id,
         filename: filename,
         original_filename: file.name,
+        file_path: filePath,
         file_size: file.size,
-        file_type: validation.fileType,
-        storage_path: storagePath,
-        status: 'uploaded'
+        file_type: fileExtension,
+        mime_type: file.type,
+        is_analyzed: false
       })
       .select()
       .single()
 
     if (dbError) {
-      await supabase.storage.from('3d-models').remove([storagePath])
+      console.error('Database error:', dbError)
       return NextResponse.json({ 
-        error: 'Database error', 
-        details: dbError.message 
+        error: 'Failed to save file metadata'
       }, { status: 500 })
     }
 

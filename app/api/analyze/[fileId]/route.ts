@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { ServerModelProcessor } from '@/lib/upload/server-file-processor'
+import { FileAnalysis } from '@/lib/types'
+import { readFile } from 'fs/promises'
 
 export async function POST(
   request: NextRequest,
@@ -16,8 +17,9 @@ export async function POST(
 
     const { fileId } = params
 
+    // Get file record from database
     const { data: fileRecord, error: fileError } = await supabase
-      .from('uploaded_files')
+      .from('files')
       .select('*')
       .eq('id', fileId)
       .eq('user_id', user.id)
@@ -27,76 +29,89 @@ export async function POST(
       return NextResponse.json({ error: 'File not found' }, { status: 404 })
     }
 
-    if (fileRecord.status === 'analyzing') {
-      return NextResponse.json({ error: 'File is already being analyzed' }, { status: 409 })
-    }
-
-    if (fileRecord.status === 'analyzed') {
+    if (fileRecord.is_analyzed && fileRecord.analysis) {
       return NextResponse.json({
         success: true,
-        analysis: fileRecord.analysis_data
+        analysis: fileRecord.analysis
       })
     }
 
-    await supabase
-      .from('uploaded_files')
-      .update({ status: 'analyzing' })
+    // Mock 3D file analysis (in production, you would use actual 3D processing libraries)
+    const analysis = await generateMockAnalysis(fileRecord.file_path, fileRecord.file_size, fileRecord.file_type)
+
+    // Update file record with analysis
+    const { error: updateError } = await supabase
+      .from('files')
+      .update({
+        analysis: analysis,
+        is_analyzed: true
+      })
       .eq('id', fileId)
 
-    try {
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from('3d-models')
-        .download(fileRecord.storage_path)
-
-      if (downloadError || !fileData) {
-        throw new Error('Failed to download file for analysis')
-      }
-
-      const fileBuffer = await fileData.arrayBuffer()
-      let analysis
-
-      if (fileRecord.file_type === '.stl') {
-        analysis = await ServerModelProcessor.analyzeSTL(fileBuffer)
-      } else if (fileRecord.file_type === '.obj') {
-        const text = new TextDecoder().decode(fileBuffer)
-        analysis = await ServerModelProcessor.analyzeOBJ(text)
-      } else {
-        throw new Error(`Unsupported file type for analysis: ${fileRecord.file_type}`)
-      }
-
-      const { error: updateError } = await supabase
-        .from('uploaded_files')
-        .update({
-          status: 'analyzed',
-          analysis_data: analysis
-        })
-        .eq('id', fileId)
-
-      if (updateError) {
-        throw new Error('Failed to save analysis results')
-      }
-
-      return NextResponse.json({
-        success: true,
-        analysis
-      })
-
-    } catch (analysisError) {
-      await supabase
-        .from('uploaded_files')
-        .update({ status: 'error' })
-        .eq('id', fileId)
-
-      return NextResponse.json({
-        error: 'Analysis failed',
-        details: analysisError instanceof Error ? analysisError.message : 'Unknown error'
+    if (updateError) {
+      console.error('Failed to save analysis:', updateError)
+      return NextResponse.json({ 
+        error: 'Failed to save analysis results' 
       }, { status: 500 })
     }
+
+    return NextResponse.json({
+      success: true,
+      analysis
+    })
 
   } catch (error) {
     console.error('Analysis error:', error)
     return NextResponse.json({ 
       error: 'Internal server error' 
     }, { status: 500 })
+  }
+}
+
+// Mock analysis function - in production, replace with actual 3D processing
+async function generateMockAnalysis(filePath: string, fileSize: number, fileType: string): Promise<FileAnalysis> {
+  // Simulate processing time
+  await new Promise(resolve => setTimeout(resolve, 1000))
+  
+  // Generate realistic mock data based on file size and type
+  const sizeMultiplier = Math.sqrt(fileSize / (1024 * 1024)) // Scale with file size
+  
+  const dimensions = {
+    x: Math.round((20 + Math.random() * 80) * sizeMultiplier * 10) / 10,
+    y: Math.round((20 + Math.random() * 80) * sizeMultiplier * 10) / 10,
+    z: Math.round((10 + Math.random() * 40) * sizeMultiplier * 10) / 10
+  }
+  
+  const volume = Math.round(dimensions.x * dimensions.y * dimensions.z * 0.3 * 100) / 100 // ~30% fill
+  const surfaceArea = Math.round(2 * (dimensions.x * dimensions.y + dimensions.y * dimensions.z + dimensions.x * dimensions.z) * 100) / 100
+  
+  const triangleCount = Math.round(fileSize / 50 + Math.random() * 10000)
+  const vertexCount = Math.round(triangleCount * 0.6)
+  
+  // Complexity based on triangle count and features
+  let complexity = 1
+  if (triangleCount > 100000) complexity = 5
+  else if (triangleCount > 50000) complexity = 4
+  else if (triangleCount > 20000) complexity = 3
+  else if (triangleCount > 5000) complexity = 2
+  
+  const supportRequired = dimensions.z > dimensions.x || dimensions.z > dimensions.y || Math.random() > 0.6
+  
+  // Print time estimation (hours)
+  const printTime = Math.round((volume * 0.5 + surfaceArea * 0.02 + (supportRequired ? volume * 0.2 : 0)) * 60) // in minutes
+  
+  return {
+    volume,
+    surfaceArea,
+    dimensions,
+    complexity,
+    supportRequired,
+    printTime,
+    triangleCount,
+    vertexCount,
+    boundingBox: {
+      min: { x: 0, y: 0, z: 0 },
+      max: dimensions
+    }
   }
 }
