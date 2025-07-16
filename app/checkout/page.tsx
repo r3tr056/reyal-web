@@ -113,37 +113,49 @@ export default function CheckoutPage() {
 
   if (orderPlaced) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
+      <div className="min-h-screen bg-gray-950 relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+
         {/* Order Success */}
-        <div className="container mx-auto px-4 py-16 pt-24">
+        <div className="container mx-auto px-4 py-16 pt-24 relative z-10">
           <div className="max-w-2xl mx-auto text-center">
-            <Button variant="ghost" size="sm" className="mb-4" asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="mb-4 text-gray-400 hover:text-white hover:bg-gray-800/50" 
+              asChild
+            >
               <Link href="/">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Home
               </Link>
             </Button>
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
-              <CheckCircle className="h-12 w-12 text-green-600" />
+            <div className="w-24 h-24 bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto mb-8">
+              <CheckCircle className="h-12 w-12 text-emerald-400" />
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Order Placed Successfully!</h1>
-            <p className="text-xl text-gray-600 mb-8">
+            <h1 className="text-4xl font-bold text-white mb-4">Order Placed Successfully!</h1>
+            <p className="text-xl text-gray-400 mb-8">
               Thank you for your order. We'll start printing your items right away.
             </p>
 
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl mb-8">
+            <Card className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl mb-8">
               <CardContent className="p-8">
                 <div className="grid md:grid-cols-2 gap-6 text-left">
                   <div>
-                    <h3 className="font-semibold mb-2">Order Details</h3>
-                    <p className="text-gray-600">Order ID: {newOrderId}</p>
-                    <p className="text-gray-600">Total: ₹{total}</p>
-                    <p className="text-gray-600">Status: Processing</p>
+                    <h3 className="font-semibold mb-2 text-white">Order Details</h3>
+                    <p className="text-gray-400">Order ID: {newOrderId}</p>
+                    <p className="text-gray-400">Total: ₹{total}</p>
+                    <p className="text-gray-400">Status: Processing</p>
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-2">Delivery Info</h3>
-                    <p className="text-gray-600">Estimated: 5-7 business days</p>
-                    <p className="text-gray-600">Tracking will be available soon</p>
+                    <h3 className="font-semibold mb-2 text-white">Delivery Info</h3>
+                    <p className="text-gray-400">Estimated: 5-7 business days</p>
+                    <p className="text-gray-400">Tracking will be available soon</p>
                   </div>
                 </div>
               </CardContent>
@@ -168,18 +180,39 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8 pt-24">
+    <div className="min-h-screen bg-gray-950 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-gradient-conic from-emerald-500/5 via-transparent to-green-500/5 rounded-full blur-3xl animate-spin" style={{ animationDuration: '30s' }}></div>
+      </div>
+
+      {/* Grid Pattern Overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.02]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%2310b981' fillOpacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+
+      <div className="container mx-auto px-4 py-8 pt-24 relative z-10">
         <div className="flex items-center space-x-4 mb-8 max-w-6xl mx-auto">
-          <Button variant="ghost" size="sm" asChild>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-gray-400 hover:text-white hover:bg-gray-800/50"
+            asChild
+          >
             <Link href="/cart">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Cart
             </Link>
           </Button>
           <div className="flex items-center space-x-2 ml-auto">
-            <Lock className="h-4 w-4 text-green-600" />
-            <span className="text-sm text-green-600 font-medium">Secure Checkout</span>
+            <Lock className="h-4 w-4 text-emerald-400" />
+            <span className="text-sm text-emerald-400 font-medium">Secure Checkout</span>
           </div>
         </div>
         {/* Progress Steps */}
@@ -194,16 +227,16 @@ export default function CheckoutPage() {
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     currentStep >= step
-                      ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
-                      : "bg-gray-200 text-gray-500"
+                      ? "bg-gradient-to-r from-emerald-600 to-green-600 text-white"
+                      : "bg-gray-700 text-gray-400"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
                 </div>
-                <span className={`ml-2 font-medium ${currentStep >= step ? "text-purple-600" : "text-gray-500"}`}>
+                <span className={`ml-2 font-medium ${currentStep >= step ? "text-emerald-400" : "text-gray-500"}`}>
                   {title}
                 </span>
-                {step < 3 && <div className="w-16 h-0.5 bg-gray-200 ml-4" />}
+                {step < 3 && <div className="w-16 h-0.5 bg-gray-700 ml-4" />}
               </div>
             ))}
           </div>
@@ -213,18 +246,18 @@ export default function CheckoutPage() {
           {/* Main Content */}
           <div className="lg:col-span-2">
             {currentStep === 1 && (
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+              <Card className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl">
                 <CardHeader>
-                  <CardTitle className="text-2xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  <CardTitle className="text-2xl text-white bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
                     Shipping Information
                   </CardTitle>
-                  <CardDescription>Enter your delivery details</CardDescription>
+                  <CardDescription className="text-gray-400">Enter your delivery details</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name *</Label>
-                      <Input
+                      <Label htmlFor="firstName" className="text-gray-300">First Name *</Label>
+                      <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                         id="firstName"
                         value={shippingData.firstName}
                         onChange={(e) => setShippingData((prev) => ({ ...prev, firstName: e.target.value }))}
@@ -232,8 +265,8 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name *</Label>
-                      <Input
+                      <Label htmlFor="lastName" className="text-gray-300">Last Name *</Label>
+                      <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                         id="lastName"
                         value={shippingData.lastName}
                         onChange={(e) => setShippingData((prev) => ({ ...prev, lastName: e.target.value }))}
@@ -244,8 +277,8 @@ export default function CheckoutPage() {
 
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email *</Label>
-                      <Input
+                      <Label htmlFor="email" className="text-gray-300">Email *</Label>
+                      <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                         id="email"
                         type="email"
                         value={shippingData.email}
@@ -254,8 +287,8 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone *</Label>
-                      <Input
+                      <Label htmlFor="phone" className="text-gray-300">Phone *</Label>
+                      <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                         id="phone"
                         value={shippingData.phone}
                         onChange={(e) => setShippingData((prev) => ({ ...prev, phone: e.target.value }))}
@@ -265,8 +298,8 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="address">Address *</Label>
-                    <Input
+                    <Label htmlFor="address" className="text-gray-300">Address *</Label>
+                    <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                       id="address"
                       value={shippingData.address}
                       onChange={(e) => setShippingData((prev) => ({ ...prev, address: e.target.value }))}
@@ -277,8 +310,8 @@ export default function CheckoutPage() {
 
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="city">City *</Label>
-                      <Input
+                      <Label htmlFor="city" className="text-gray-300">City *</Label>
+                      <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                         id="city"
                         value={shippingData.city}
                         onChange={(e) => setShippingData((prev) => ({ ...prev, city: e.target.value }))}
@@ -286,7 +319,7 @@ export default function CheckoutPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="state">State *</Label>
+                      <Label htmlFor="state" className="text-gray-300">State *</Label>
                       <Select
                         value={shippingData.state}
                         onValueChange={(value) => setShippingData((prev) => ({ ...prev, state: value }))}
@@ -304,8 +337,8 @@ export default function CheckoutPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="pincode">PIN Code *</Label>
-                      <Input
+                      <Label htmlFor="pincode" className="text-gray-300">PIN Code *</Label>
+                      <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                         id="pincode"
                         value={shippingData.pincode}
                         onChange={(e) => setShippingData((prev) => ({ ...prev, pincode: e.target.value }))}
@@ -322,7 +355,7 @@ export default function CheckoutPage() {
                         setShippingData((prev) => ({ ...prev, saveAddress: checked as boolean }))
                       }
                     />
-                    <Label htmlFor="saveAddress">Save this address for future orders</Label>
+                    <Label htmlFor="saveAddress" className="text-gray-300">Save this address for future orders</Label>
                   </div>
 
                   <Button
@@ -336,7 +369,7 @@ export default function CheckoutPage() {
             )}
 
             {currentStep === 2 && (
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+              <Card className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl">
                 <CardHeader>
                   <CardTitle className="text-2xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                     Payment Method
@@ -356,8 +389,8 @@ export default function CheckoutPage() {
 
                     <TabsContent value="card" className="space-y-6 mt-6">
                       <div className="space-y-2">
-                        <Label htmlFor="cardNumber">Card Number *</Label>
-                        <Input
+                        <Label htmlFor="cardNumber" className="text-gray-300">Card Number *</Label>
+                        <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                           id="cardNumber"
                           placeholder="1234 5678 9012 3456"
                           value={paymentData.cardNumber}
@@ -365,8 +398,8 @@ export default function CheckoutPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="cardName">Cardholder Name *</Label>
-                        <Input
+                        <Label htmlFor="cardName" className="text-gray-300">Cardholder Name *</Label>
+                        <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                           id="cardName"
                           placeholder="Name on card"
                           value={paymentData.cardName}
@@ -375,8 +408,8 @@ export default function CheckoutPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label htmlFor="expiryDate">Expiry Date *</Label>
-                          <Input
+                          <Label htmlFor="expiryDate" className="text-gray-300">Expiry Date *</Label>
+                          <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                             id="expiryDate"
                             placeholder="MM/YY"
                             value={paymentData.expiryDate}
@@ -384,8 +417,8 @@ export default function CheckoutPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="cvv">CVV *</Label>
-                          <Input
+                          <Label htmlFor="cvv" className="text-gray-300">CVV *</Label>
+                          <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                             id="cvv"
                             placeholder="123"
                             value={paymentData.cvv}
@@ -397,8 +430,8 @@ export default function CheckoutPage() {
 
                     <TabsContent value="upi" className="space-y-6 mt-6">
                       <div className="space-y-2">
-                        <Label htmlFor="upiId">UPI ID *</Label>
-                        <Input
+                        <Label htmlFor="upiId" className="text-gray-300">UPI ID *</Label>
+                        <Input className="bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                           id="upiId"
                           placeholder="yourname@upi"
                           value={paymentData.upiId}
@@ -446,7 +479,7 @@ export default function CheckoutPage() {
             )}
 
             {currentStep === 3 && (
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+              <Card className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl">
                 <CardHeader>
                   <CardTitle className="text-2xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
                     Review Your Order
@@ -532,7 +565,7 @@ export default function CheckoutPage() {
 
           {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl sticky top-24">
+            <Card className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl sticky top-24">
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
