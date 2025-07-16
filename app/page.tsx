@@ -306,42 +306,42 @@ export default function HomePage() {
   const estimate = calculateEstimate()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-emerald-950">
+    <div className="min-h-screen bg-page">
       {/* Hero Section */}
-      <section className="relative py-24 overflow-hidden">
+      <section className="relative section-padding overflow-hidden bg-gradient-to-br from-background via-background to-primary/5">
         {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0 opacity-[0.02] dark:opacity-[0.05]">
           <div
             className="absolute inset-0"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%2310b981' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='hsl(var(--primary))' fillOpacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
             }}
           />
         </div>
 
         {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-emerald-500/10 to-green-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
         </div>
 
-        <div className="container mx-auto px-6 relative z-10">
+        <div className="container-page relative z-10">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center space-x-3 bg-gray-800/80 backdrop-blur-sm px-6 py-3 rounded-full mb-8 border border-gray-700/50">
-              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-gray-300">Professional 3D Printing Services</span>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">Industry Leading</Badge>
+            <div className="inline-flex items-center space-x-3 bg-card/80 backdrop-blur-sm px-6 py-3 rounded-full mb-8 border border-border shadow-sm">
+              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-muted-foreground">Professional 3D Printing Services</span>
+              <Badge className="bg-primary/10 text-primary border-primary/20">Industry Leading</Badge>
             </div>
 
-            <h1 className="text-7xl font-bold text-white mb-8 leading-tight">
+            <h1 className="heading-primary mb-8">
               Precision Manufacturing
               <br />
-              <span className="bg-gradient-to-r from-emerald-400 via-green-400 to-teal-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-primary via-primary to-primary-green bg-clip-text text-transparent">
                 Made Simple
               </span>
             </h1>
 
-            <p className="text-xl text-gray-400 mb-12 max-w-4xl mx-auto leading-relaxed">
+            <p className="text-body-large mb-12 max-w-4xl mx-auto">
               Advanced 3D printing technology meets professional service. From rapid prototyping to production runs, we
               deliver precision parts with industrial-grade quality and speed.
             </p>
@@ -349,7 +349,7 @@ export default function HomePage() {
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">
               <Button
                 size="lg"
-                className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transform hover:scale-105 transition-all duration-300 px-8 py-4 text-lg font-semibold"
+                className="btn-primary shadow-lg hover:shadow-primary/25 transform hover:scale-105 transition-all duration-300 px-8 py-4 text-lg font-semibold"
                 onClick={() => setShowUploadModal(true)}
               >
                 <Upload className="mr-3 h-5 w-5" />
@@ -358,7 +358,7 @@ export default function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-2 border-gray-700 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white hover:border-emerald-500/50 shadow-xl backdrop-blur-sm px-8 py-4 text-lg font-semibold"
+                className="btn-secondary shadow-lg backdrop-blur-sm px-8 py-4 text-lg font-semibold hover:scale-105 transition-all duration-300"
                 asChild
               >
                 <Link href="/marketplace">
@@ -371,17 +371,17 @@ export default function HomePage() {
             {/* Key Metrics */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
               {[
-                { icon: CheckCircle, label: "Success Rate", value: "99.8%", color: "text-emerald-400" },
-                { icon: Clock, label: "Avg. Turnaround", value: "24h", color: "text-green-400" },
-                { icon: Award, label: "Quality Rating", value: "4.9★", color: "text-yellow-400" },
-                { icon: TrendingUp, label: "Orders Completed", value: "50K+", color: "text-blue-400" },
+                { icon: CheckCircle, label: "Success Rate", value: "99.8%", color: "text-primary" },
+                { icon: Clock, label: "Avg. Turnaround", value: "24h", color: "text-primary" },
+                { icon: Award, label: "Quality Rating", value: "4.9★", color: "text-yellow-500" },
+                { icon: TrendingUp, label: "Orders Completed", value: "50K+", color: "text-primary" },
               ].map((stat, index) => (
                 <div key={index} className="text-center group">
-                  <div className="w-12 h-12 bg-gray-800/50 border border-gray-700/50 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 group-hover:border-emerald-500/50 transition-all duration-300">
+                  <div className="w-12 h-12 bg-card border border-border rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 group-hover:border-primary/50 transition-all duration-300 shadow-sm">
                     <stat.icon className={`h-6 w-6 ${stat.color}`} />
                   </div>
-                  <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
-                  <div className="text-sm text-gray-400">{stat.label}</div>
+                  <div className="text-2xl font-bold text-foreground mb-1">{stat.value}</div>
+                  <div className="text-sm text-muted-foreground">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -391,15 +391,15 @@ export default function HomePage() {
           <div className="grid lg:grid-cols-2 gap-12 mb-20">
             {/* Enhanced Quick Upload Box */}
             <div>
-              <Card className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 h-full">
+              <Card className="card-elevated h-full hover:border-primary/20 transition-all duration-500">
                 <CardHeader className="pb-4">
                   <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-green rounded-lg flex items-center justify-center shadow-lg">
                       <Upload className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl text-white">Upload Your Design</CardTitle>
-                      <CardDescription className="text-gray-400">Professional analysis & instant quote</CardDescription>
+                      <CardTitle className="text-xl text-foreground">Upload Your Design</CardTitle>
+                      <CardDescription className="text-muted-foreground">Professional analysis & instant quote</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -408,37 +408,37 @@ export default function HomePage() {
                     {...getRootProps()}
                     className={`text-center cursor-pointer transition-all duration-300 rounded-xl p-8 border-2 border-dashed relative overflow-hidden ${
                       isDragActive
-                        ? "border-emerald-500 bg-gradient-to-br from-emerald-500/10 to-green-500/10 scale-105"
-                        : "border-gray-600 hover:border-emerald-500/50 hover:bg-gradient-to-br hover:from-emerald-500/5 hover:to-green-500/5"
+                        ? "border-primary bg-primary/5 scale-105"
+                        : "border-border hover:border-primary/50 hover:bg-primary/[0.02]"
                     }`}
                   >
                     <input {...getInputProps()} />
 
                     <div className="relative z-10">
-                      <div className="w-16 h-16 bg-gradient-to-br from-emerald-600 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg transform hover:scale-110 transition-transform duration-300">
+                      <div className="w-16 h-16 bg-gradient-to-br from-primary to-primary-green rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg transform hover:scale-110 transition-transform duration-300">
                         <FileText className="h-8 w-8 text-white" />
                       </div>
 
                       {isDragActive ? (
                         <div>
-                          <h3 className="text-xl font-bold text-emerald-400 mb-2">Drop files here</h3>
-                          <p className="text-gray-400">Release to upload your 3D models</p>
+                          <h3 className="text-xl font-bold text-primary mb-2">Drop files here</h3>
+                          <p className="text-muted-foreground">Release to upload your 3D models</p>
                         </div>
                       ) : (
                         <div>
-                          <h3 className="text-xl font-bold text-white mb-2">Drag & Drop Files</h3>
-                          <p className="text-gray-400 mb-4">STL, OBJ, 3MF files supported (Max 100MB)</p>
+                          <h3 className="text-xl font-bold text-foreground mb-2">Drag & Drop Files</h3>
+                          <p className="text-muted-foreground mb-4">STL, OBJ, 3MF files supported (Max 100MB)</p>
                           <div className="flex items-center justify-center space-x-6 text-sm">
-                            <div className="flex items-center space-x-2 text-emerald-400">
-                              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                            <div className="flex items-center space-x-2 text-primary">
+                              <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                               <span>Auto Analysis</span>
                             </div>
-                            <div className="flex items-center space-x-2 text-green-400">
-                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse delay-300"></div>
+                            <div className="flex items-center space-x-2 text-primary">
+                              <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-300"></div>
                               <span>Instant Quote</span>
                             </div>
-                            <div className="flex items-center space-x-2 text-teal-400">
-                              <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse delay-700"></div>
+                            <div className="flex items-center space-x-2 text-primary">
+                              <div className="w-2 h-2 bg-primary rounded-full animate-pulse delay-700"></div>
                               <span>Quality Check</span>
                             </div>
                           </div>
@@ -448,8 +448,8 @@ export default function HomePage() {
                   </div>
 
                   {uploadedFiles.length > 0 && (
-                    <div className="mt-6 p-4 bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-xl border border-emerald-500/20">
-                      <h4 className="font-bold text-emerald-400 mb-3 flex items-center">
+                    <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                      <h4 className="font-bold text-primary mb-3 flex items-center">
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Files Ready for Processing
                       </h4>
@@ -457,20 +457,20 @@ export default function HomePage() {
                         {uploadedFiles.map((file, index) => (
                           <div
                             key={index}
-                            className="flex items-center space-x-3 text-sm bg-gray-700/50 p-3 rounded-lg backdrop-blur-sm"
+                            className="flex items-center space-x-3 text-sm bg-card p-3 rounded-lg backdrop-blur-sm border border-border"
                           >
-                            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
+                            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-green rounded-lg flex items-center justify-center">
                               <FileText className="h-4 w-4 text-white" />
                             </div>
-                            <span className="text-gray-300 font-medium flex-1">{file.name}</span>
-                            <span className="text-emerald-400 text-xs bg-emerald-500/20 px-2 py-1 rounded-full">
+                            <span className="text-foreground font-medium flex-1">{file.name}</span>
+                            <span className="text-primary text-xs bg-primary/10 px-2 py-1 rounded-full">
                               {(file.size / 1024 / 1024).toFixed(2)} MB
                             </span>
                           </div>
                         ))}
                       </div>
                     <Button
-                      className="mt-4 w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-lg"
+                      className="mt-4 w-full btn-primary shadow-lg"
                       onClick={() => setShowUploadModal(true)}
                     >
                       Continue to Analysis
@@ -483,40 +483,40 @@ export default function HomePage() {
 
             {/* Estimate Calculator */}
             <div>
-              <Card className="bg-gray-800/50 backdrop-blur-xl border border-gray-700/50 shadow-2xl hover:shadow-green-500/10 transition-all duration-500 h-full">
+              <Card className="card-elevated h-full hover:border-primary/20 transition-all duration-500">
                 <CardHeader className="pb-4">
                   <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 bg-gradient-to-br from-primary-green to-primary rounded-lg flex items-center justify-center shadow-lg">
                       <Calculator className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-xl text-white">Cost Calculator</CardTitle>
-                      <CardDescription className="text-gray-400">Get accurate pricing estimates</CardDescription>
+                      <CardTitle className="text-xl text-foreground">Cost Calculator</CardTitle>
+                      <CardDescription className="text-muted-foreground">Get accurate pricing estimates</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Material Selection */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium text-gray-300">Material Type</Label>
+                    <Label className="text-sm font-medium text-foreground">Material Type</Label>
                     <Select
                       value={estimateData.material}
                       onValueChange={(value) => setEstimateData((prev) => ({ ...prev, material: value }))}
                     >
-                      <SelectTrigger className="bg-gray-700/50 border-gray-600 text-gray-300 hover:border-emerald-500/50 transition-colors">
+                      <SelectTrigger className="bg-background border-border text-foreground hover:border-primary/50 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-700">
-                        <SelectItem value="pla" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="pla" className="text-foreground hover:bg-accent focus:bg-accent">
                           Bambu PLA Basic (₹35/hr)
                         </SelectItem>
-                        <SelectItem value="abs" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="abs" className="text-foreground hover:bg-accent focus:bg-accent">
                           Bambu ABS Engineering (₹45/hr)
                         </SelectItem>
-                        <SelectItem value="petg" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="petg" className="text-foreground hover:bg-accent focus:bg-accent">
                           Bambu PETG-CF (₹65/hr)
                         </SelectItem>
-                        <SelectItem value="tpu" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="tpu" className="text-foreground hover:bg-accent focus:bg-accent">
                           Bambu TPU 95A (₹85/hr)
                         </SelectItem>
                       </SelectContent>
@@ -525,25 +525,25 @@ export default function HomePage() {
 
                   {/* Quality Selection */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium text-gray-300">Print Quality</Label>
+                    <Label className="text-sm font-medium text-foreground">Print Quality</Label>
                     <Select
                       value={estimateData.quality}
                       onValueChange={(value) => setEstimateData((prev) => ({ ...prev, quality: value }))}
                     >
-                      <SelectTrigger className="bg-gray-700/50 border-gray-600 text-gray-300 hover:border-emerald-500/50 transition-colors">
+                      <SelectTrigger className="bg-background border-border text-foreground hover:border-primary/50 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-700">
-                        <SelectItem value="draft" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="draft" className="text-foreground hover:bg-accent focus:bg-accent">
                           Draft - 0.3mm (Rapid)
                         </SelectItem>
-                        <SelectItem value="standard" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="standard" className="text-foreground hover:bg-accent focus:bg-accent">
                           Standard - 0.2mm (Balanced)
                         </SelectItem>
-                        <SelectItem value="high" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="high" className="text-foreground hover:bg-accent focus:bg-accent">
                           High - 0.15mm (Precision)
                         </SelectItem>
-                        <SelectItem value="ultra" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="ultra" className="text-foreground hover:bg-accent focus:bg-accent">
                           Ultra - 0.1mm (Maximum Detail)
                         </SelectItem>
                       </SelectContent>
@@ -552,7 +552,7 @@ export default function HomePage() {
 
                   {/* Infill Percentage */}
                   <div className="space-y-4">
-                    <Label className="text-sm font-medium text-gray-300">
+                    <Label className="text-sm font-medium text-foreground">
                       Infill Density: {estimateData.infill[0]}%
                     </Label>
                     <Slider
@@ -563,7 +563,7 @@ export default function HomePage() {
                       step={5}
                       className="w-full"
                     />
-                    <div className="flex justify-between text-xs text-gray-500">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Hollow (10%)</span>
                       <span>Solid (100%)</span>
                     </div>
@@ -571,7 +571,7 @@ export default function HomePage() {
 
                   {/* Quantity */}
                   <div className="space-y-3">
-                    <Label htmlFor="quantity" className="text-sm font-medium text-gray-300">
+                    <Label htmlFor="quantity" className="text-sm font-medium text-foreground">
                       Quantity
                     </Label>
                     <Input
@@ -583,31 +583,31 @@ export default function HomePage() {
                       onChange={(e) =>
                         setEstimateData((prev) => ({ ...prev, quantity: Number.parseInt(e.target.value) || 1 }))
                       }
-                      className="bg-gray-700/50 border-gray-600 text-gray-300 hover:border-emerald-500/50 focus:border-emerald-500 transition-colors"
+                      className="bg-background border-border text-foreground hover:border-primary/50 focus:border-primary transition-colors"
                     />
                   </div>
 
                   {/* Location */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium text-gray-300">Delivery Location</Label>
+                    <Label className="text-sm font-medium text-foreground">Delivery Location</Label>
                     <Select
                       value={estimateData.location}
                       onValueChange={(value) => setEstimateData((prev) => ({ ...prev, location: value }))}
                     >
-                      <SelectTrigger className="bg-gray-700/50 border-gray-600 text-gray-300 hover:border-emerald-500/50 transition-colors">
+                      <SelectTrigger className="bg-background border-border text-foreground hover:border-primary/50 transition-colors">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-700">
-                        <SelectItem value="mumbai" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="mumbai" className="text-foreground hover:bg-accent focus:bg-accent">
                           Mumbai (Same Day)
                         </SelectItem>
-                        <SelectItem value="delhi" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="delhi" className="text-foreground hover:bg-accent focus:bg-accent">
                           Delhi (1-2 days)
                         </SelectItem>
-                        <SelectItem value="bangalore" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="bangalore" className="text-foreground hover:bg-accent focus:bg-accent">
                           Bangalore (1-2 days)
                         </SelectItem>
-                        <SelectItem value="other" className="text-gray-300 hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem value="other" className="text-foreground hover:bg-accent focus:bg-accent">
                           Other Cities (2-4 days)
                         </SelectItem>
                       </SelectContent>
@@ -615,37 +615,37 @@ export default function HomePage() {
                   </div>
 
                   {/* Estimate Results */}
-                  <div className="bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-xl p-6 border border-emerald-500/20">
-                    <h4 className="font-bold text-emerald-400 mb-4 flex items-center">
+                  <div className="bg-primary/5 rounded-xl p-6 border border-primary/20">
+                    <h4 className="font-bold text-primary mb-4 flex items-center">
                       <Zap className="h-4 w-4 mr-2" />
                       Instant Quote
                     </h4>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-400">Estimated Cost:</span>
-                        <span className="text-3xl font-bold text-white">₹{estimate.price}</span>
+                        <span className="text-sm text-muted-foreground">Estimated Cost:</span>
+                        <span className="text-3xl font-bold text-foreground">₹{estimate.price}</span>
                       </div>
                       <div className="grid grid-cols-3 gap-4 text-sm">
                         <div className="text-center">
-                          <div className="text-gray-400 mb-1">Print Time</div>
-                          <div className="font-semibold text-gray-300">{estimate.printTime}h</div>
+                          <div className="text-muted-foreground mb-1">Print Time</div>
+                          <div className="font-semibold text-foreground">{estimate.printTime}h</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-gray-400 mb-1">Ready In</div>
-                          <div className="font-semibold text-gray-300">{estimate.readyTime}d</div>
+                          <div className="text-muted-foreground mb-1">Ready In</div>
+                          <div className="font-semibold text-foreground">{estimate.readyTime}d</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-gray-400 mb-1">Delivered</div>
-                          <div className="font-semibold text-gray-300">{estimate.deliveryTime}d</div>
+                          <div className="text-muted-foreground mb-1">Delivered</div>
+                          <div className="font-semibold text-foreground">{estimate.deliveryTime}d</div>
                         </div>
                       </div>
                     </div>
-                    <Button className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold">
+                    <Button className="w-full mt-4 btn-primary shadow-lg">
                       Get Detailed Quote
                     </Button>
                   </div>
 
-                  <p className="text-xs text-gray-500 text-center">
+                  <p className="text-xs text-muted-foreground text-center">
                     * Estimates based on standard parameters. Final pricing may vary based on model complexity.
                   </p>
                 </CardContent>

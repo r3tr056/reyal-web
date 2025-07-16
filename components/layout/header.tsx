@@ -27,34 +27,17 @@ import {
   LogOut,
   Settings,
   Upload,
-  Heart,
-  History,
-  CreditCard,
   HelpCircle,
   Phone,
-  MapPin,
-  Sparkles,
-  Printer,
-  PlusCircle,
-  FileText,
-  Truck
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 interface HeaderProps {
   className?: string
-  variant?: 'default' | 'light' | 'minimal'
-  showSearch?: boolean
-  showNotifications?: boolean
 }
 
-export function Header({ 
-  className, 
-  variant = 'default',
-  showSearch = true,
-  showNotifications = true
-}: HeaderProps) {
+export function Header({ className }: HeaderProps) {
   const { user, signOut, loading } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
@@ -63,28 +46,11 @@ export function Header({
   const [notifications, setNotifications] = useState(2)
 
   const isAuthPage = pathname === '/login'
-  const isCheckoutFlow = ['/cart', '/checkout', '/orders', '/profile', '/track'].some(path => pathname.startsWith(path))
-  const isDashboardPage = ['/orders', '/profile'].some(path => pathname.startsWith(path))
-
-  const headerVariants = {
-    default: 'backdrop-blur-xl bg-gray-900/80 border-b border-gray-800/30 text-white',
-    light: 'backdrop-blur-md bg-white/80 border-b border-gray-100 text-gray-900',
-    minimal: 'backdrop-blur-sm bg-transparent border-b border-gray-200/50 text-gray-900'
-  }
-
-  const getVariantForPage = () => {
-    if (variant !== 'default') return variant
-    if (isCheckoutFlow || isDashboardPage) return 'light'
-    return 'default'
-  }
-
-  const currentVariant = getVariantForPage()
-  const isDark = currentVariant === 'default'
 
   const navigationItems = [
     { href: '/', label: 'Home', icon: Home, active: pathname === '/' },
     { href: '/marketplace', label: 'Marketplace', icon: Search, active: pathname === '/marketplace' },
-    { href: '/services', label: 'Services', icon: Printer, active: pathname.startsWith('/services') },
+    { href: '/services', label: 'Services', icon: Package2, active: pathname.startsWith('/services') },
     { href: '/contact', label: 'Contact', icon: Phone, active: pathname === '/contact' }
   ]
 
@@ -101,15 +67,14 @@ export function Header({
   if (loading) {
     return (
       <header className={cn(
-        'sticky top-0 z-50 w-full h-16',
-        headerVariants[currentVariant],
+        'sticky top-0 z-50 w-full bg-header border-b border-header backdrop-blur-md',
         className
       )}>
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="w-8 h-8 bg-gray-300 rounded animate-pulse" />
+        <div className="container-page h-16 flex items-center justify-between">
+          <div className="w-8 h-8 bg-muted rounded animate-pulse" />
           <div className="flex space-x-4">
-            <div className="w-20 h-8 bg-gray-300 rounded animate-pulse" />
-            <div className="w-20 h-8 bg-gray-300 rounded animate-pulse" />
+            <div className="w-20 h-8 bg-muted rounded animate-pulse" />
+            <div className="w-20 h-8 bg-muted rounded animate-pulse" />
           </div>
         </div>
       </header>
@@ -118,39 +83,33 @@ export function Header({
 
   return (
     <header className={cn(
-      'sticky top-0 z-50 w-full',
-      headerVariants[currentVariant],
+      'sticky top-0 z-50 w-full bg-header/95 backdrop-blur-md border-b border-header shadow-sm',
       className
     )}>
-      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="container-page h-16 flex items-center justify-between">
+        {/* Mobile menu trigger */}
         <div className="flex items-center space-x-4">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className={cn(
-                  'md:hidden',
-                  isDark ? 'text-gray-300 hover:text-white hover:bg-gray-800/50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/50'
-                )}
+                className="md:hidden text-header hover:bg-accent/10"
               >
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className={cn(
-              'w-80',
-              isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
-            )}>
+            <SheetContent side="left" className="w-80 bg-section border-border">
               <div className="flex flex-col h-full">
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-border">
                   <Link href="/" className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary-green rounded-lg flex items-center justify-center shadow-lg">
                       <Layers className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <span className="text-lg font-bold">REYAL</span>
-                      <div className="text-xs text-emerald-500 font-medium">3D PRINTING</div>
+                      <span className="text-lg font-bold text-foreground">REYAL</span>
+                      <div className="text-xs text-primary font-medium tracking-wider">3D PRINTING</div>
                     </div>
                   </Link>
                 </div>
@@ -164,10 +123,8 @@ export function Header({
                       className={cn(
                         'flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors',
                         item.active
-                          ? 'bg-emerald-500/10 text-emerald-600 font-medium'
-                          : isDark 
-                            ? 'text-gray-300 hover:text-white hover:bg-gray-800/50'
-                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/50'
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-accent/10'
                       )}
                     >
                       <item.icon className="h-5 w-5" />
@@ -177,8 +134,8 @@ export function Header({
                   
                   {user && dashboardItems.length > 0 && (
                     <>
-                      <div className="my-4 border-t border-gray-200" />
-                      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <div className="my-4 border-t border-border" />
+                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                         Dashboard
                       </div>
                       {dashboardItems.map((item) => (
@@ -189,10 +146,8 @@ export function Header({
                           className={cn(
                             'flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors',
                             item.active
-                              ? 'bg-emerald-500/10 text-emerald-600 font-medium'
-                              : isDark 
-                                ? 'text-gray-300 hover:text-white hover:bg-gray-800/50'
-                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/50'
+                              ? 'bg-primary/10 text-primary font-medium'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/10'
                           )}
                         >
                           <item.icon className="h-5 w-5" />
@@ -203,21 +158,21 @@ export function Header({
                   )}
                 </nav>
 
-                <div className="p-4 border-t border-gray-200">
+                <div className="p-4 border-t border-border">
                   {user ? (
                     <div className="space-y-3">
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
-                          <AvatarFallback className="bg-emerald-500 text-white">
+                          <AvatarFallback className="bg-primary text-white">
                             {user.email?.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
+                          <p className="text-sm font-medium text-foreground truncate">
                             {user.user_metadata?.full_name || user.email?.split('@')[0]}
                           </p>
-                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                         </div>
                       </div>
                       <Button
@@ -231,7 +186,7 @@ export function Header({
                       </Button>
                     </div>
                   ) : (
-                    <Button asChild className="w-full">
+                    <Button asChild className="w-full btn-primary">
                       <Link href="/login">Sign In</Link>
                     </Button>
                   )}
@@ -240,105 +195,96 @@ export function Header({
             </SheetContent>
           </Sheet>
 
+          {/* Logo */}
           <Link href="/" className="flex items-center space-x-3 group">
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-xl group-hover:shadow-emerald-500/25 transition-all duration-500 group-hover:scale-110">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary-green rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-primary/25 transition-all duration-300 group-hover:scale-105">
                 <Layers className="h-6 w-6 text-white" />
               </div>
-              <div className="absolute inset-0 bg-emerald-500/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-primary/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
             <div className="hidden sm:block">
-              <span className={cn(
-                'text-2xl font-bold',
-                isDark ? 'text-white' : 'text-gray-900'
-              )}>
-                REYAL
-              </span>
-              <div className="text-xs text-emerald-400 font-medium tracking-wider">3D PRINTING</div>
+              <span className="text-2xl font-bold text-header">REYAL</span>
+              <div className="text-xs text-primary font-medium tracking-wider">3D PRINTING</div>
             </div>
           </Link>
         </div>
 
+        {/* Desktop navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           {navigationItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               className={cn(
-                'relative group font-medium transition-all duration-300',
+                'relative group font-medium transition-all duration-300 text-sm',
                 item.active
-                  ? 'text-emerald-400'
-                  : isDark
-                    ? 'text-gray-300 hover:text-emerald-400'
-                    : 'text-gray-600 hover:text-emerald-600'
+                  ? 'text-primary'
+                  : 'text-header hover:text-primary'
               )}
             >
               <span>{item.label}</span>
               <div className={cn(
-                'absolute -bottom-1 left-0 h-0.5 bg-emerald-500 rounded-full transition-all duration-300',
+                'absolute -bottom-1 left-0 h-0.5 bg-primary rounded-full transition-all duration-300',
                 item.active ? 'w-full' : 'w-0 group-hover:w-full'
               )} />
             </Link>
           ))}
         </nav>
 
-        <div className="flex items-center space-x-4">
-          {showNotifications && user && (
+        {/* Right side actions */}
+        <div className="flex items-center space-x-3">
+          {/* Notifications */}
+          {user && (
             <Button
               variant="ghost"
               size="sm"
-              className={cn(
-                'relative',
-                isDark ? 'text-gray-300 hover:text-white hover:bg-gray-800/50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/50'
-              )}
+              className="relative text-header hover:bg-accent/10"
             >
               <Bell className="h-5 w-5" />
               {notifications > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-emerald-500 text-white animate-pulse">
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-primary text-white animate-pulse">
                   {notifications}
                 </Badge>
               )}
             </Button>
           )}
 
+          {/* Cart */}
           <Button
             variant="ghost"
             size="sm"
-            className={cn(
-              'relative',
-              isDark 
-                ? 'border-gray-700/50 bg-gray-800/30 hover:bg-gray-700/50 text-gray-300 hover:text-white hover:border-emerald-500/50'
-                : 'border-gray-300/50 bg-gray-100/30 hover:bg-gray-200/50 text-gray-600 hover:text-gray-900 hover:border-emerald-500/50'
-            )}
+            className="relative border border-border bg-background/50 hover:bg-accent/10 text-header"
             asChild
           >
             <Link href="/cart">
               <ShoppingCart className="h-4 w-4 mr-2 transition-transform hover:scale-110" />
               Cart
               {cartItemCount > 0 && (
-                <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-emerald-500 text-white shadow-lg animate-pulse">
+                <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-primary text-white shadow-lg animate-pulse">
                   {cartItemCount}
                 </Badge>
               )}
             </Link>
           </Button>
 
+          {/* User menu or sign in */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.user_metadata?.avatar_url} alt={user.email} />
-                    <AvatarFallback className="bg-emerald-500 text-white">
+                    <AvatarFallback className="bg-primary text-white">
                       {user.email?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56 bg-section border-border" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
+                    <p className="text-sm font-medium leading-none text-foreground">
                       {user.user_metadata?.full_name || user.email?.split('@')[0]}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
@@ -389,7 +335,7 @@ export function Header({
           ) : !isAuthPage ? (
             <Button
               size="sm"
-              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 shadow-xl hover:shadow-emerald-500/25 text-white transition-all duration-300"
+              className="btn-primary shadow-lg hover:shadow-primary/25 transition-all duration-300"
               asChild
             >
               <Link href="/login">

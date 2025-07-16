@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: 'REYAL - 3D Printing Services',
   description: 'Professional 3D printing and manufacturing services',
   generator: 'Next.js',
+  keywords: '3D printing, manufacturing, prototyping, precision printing, design services',
+  authors: [{ name: 'REYAL' }],
+  viewport: 'width=device-width, initial-scale=1',
 }
 
 export default function RootLayout({
@@ -17,17 +20,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className="min-h-screen">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
           <AuthProvider>
-            <div className="min-h-screen bg-gray-950">
+            <div className="min-h-screen bg-page">
               <Header />
-              <main>
+              <main className="relative">
                 {children}
               </main>
             </div>
