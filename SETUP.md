@@ -21,7 +21,7 @@ REYAL is a comprehensive 3D printing service platform built with:
 - **Frontend**: Next.js 15 with App Router, TypeScript, Tailwind CSS
 - **Backend**: Next.js API routes with TypeScript
 - **Database**: Supabase (PostgreSQL) with Row Level Security
-- **Authentication**: Supabase Auth with email/OAuth
+- **Authentication**: Supabase Auth with email/password
 - **Storage**: Supabase Storage for 3D models and images
 - **Deployment**: Vercel with custom domain support
 - **Testing**: Jest (unit), Playwright (E2E), comprehensive API testing

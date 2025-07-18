@@ -71,20 +71,6 @@ describe('Supabase Integration Tests', () => {
       expect(mockLoginResponse.user.email_confirmed_at).toBeTruthy()
     })
 
-    it('should validate OAuth provider integration', () => {
-      const supportedProviders = ['google', 'github', 'discord']
-      const oauthConfig = {
-        redirectTo: 'http://localhost:3000/auth/callback',
-        scopes: 'email profile'
-      }
-
-      supportedProviders.forEach(provider => {
-        expect(['google', 'github', 'discord', 'apple', 'facebook']).toContain(provider)
-      })
-
-      expect(oauthConfig.redirectTo).toMatch(/^https?:\/\//)
-    })
-
     it('should validate session management', () => {
       const sessionData = {
         access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',

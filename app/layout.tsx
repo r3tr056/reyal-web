@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { ReduxProvider } from '@/lib/store/ReduxProvider'
+import { AuthProvider } from '@/lib/providers/AuthProvider'
 import { Header } from '@/components/layout/header'
 import { ThemeProvider } from '@/components/theme-provider'
+import { Toaster } from '@/components/ui/toaster'
 
 export const metadata: Metadata = {
   title: 'REYAL - 3D Printing Services',
@@ -25,21 +27,24 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            <div className="min-h-screen bg-page">
-              <Header />
-              <main className="relative">
-                {children}
-              </main>
-            </div>
-          </AuthProvider>
-        </ThemeProvider>
+        <ReduxProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <AuthProvider>
+              <div className="min-h-screen bg-page">
+                <Header />
+                <main className="relative">
+                  {children}
+                </main>
+              </div>
+              <Toaster />
+            </AuthProvider>
+          </ThemeProvider>
+        </ReduxProvider>
       </body>
     </html>
   )

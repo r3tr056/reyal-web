@@ -39,7 +39,7 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAuth } from "@/contexts/AuthContext"
+import { useAuth } from "@/lib/store/hooks"
 import { useRouter } from "next/navigation"
 
 interface FileAnalysis {

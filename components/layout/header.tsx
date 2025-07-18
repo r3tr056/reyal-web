@@ -30,7 +30,8 @@ import {
   HelpCircle,
   Phone,
 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAppDispatch, useAppSelector } from '@/lib/store/hooks'
+import { signOut } from '@/lib/store/slices/authSlice'
 import { cn } from '@/lib/utils'
 
 interface HeaderProps {
@@ -38,14 +39,20 @@ interface HeaderProps {
 }
 
 export function Header({ className }: HeaderProps) {
-  const { user, signOut, loading } = useAuth()
+  const dispatch = useAppDispatch()
+  const { user, loading } = useAppSelector((state) => state.auth)
+  const { itemCount } = useAppSelector((state) => state.cart)
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [cartItemCount, setCartItemCount] = useState(3)
   const [notifications, setNotifications] = useState(2)
 
   const isAuthPage = pathname === '/login'
+
+  const handleSignOut = async () => {
+    await dispatch(signOut())
+    router.push('/')
+  }
 
   const navigationItems = [
     { href: '/', label: 'Home', icon: Home, active: pathname === '/' },
@@ -58,11 +65,6 @@ export function Header({ className }: HeaderProps) {
     { href: '/orders', label: 'Orders', icon: Package2, active: pathname === '/orders' },
     { href: '/profile', label: 'Profile', icon: User, active: pathname === '/profile' }
   ] : []
-
-  const handleSignOut = async () => {
-    await signOut()
-    router.push('/')
-  }
 
   if (loading) {
     return (
@@ -260,9 +262,9 @@ export function Header({ className }: HeaderProps) {
             <Link href="/cart">
               <ShoppingCart className="h-4 w-4 mr-2 transition-transform hover:scale-110" />
               Cart
-              {cartItemCount > 0 && (
+              {itemCount > 0 && (
                 <Badge className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs bg-primary text-white shadow-lg animate-pulse">
-                  {cartItemCount}
+                  {itemCount}
                 </Badge>
               )}
             </Link>

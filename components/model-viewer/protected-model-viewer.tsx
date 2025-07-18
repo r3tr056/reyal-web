@@ -8,7 +8,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/lib/store/hooks'
 import {
   Eye,
   EyeOff,
