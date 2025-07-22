@@ -44,13 +44,13 @@ export async function GET(request: NextRequest) {
       await logSecurityEvent('UNAUTHORIZED_ANALYTICS_ACCESS', {
         userId: user.id,
         requestId,
-        ip: headers().get('x-forwarded-for')
+        ip: (await headers()).get('x-forwarded-for')
       })
       return adminCheck
     }
 
     // Apply rate limiting
-    const rateLimitResult = await rateLimit('ANALYTICS_READ')(request, user.id, true)
+    const rateLimitResult = await rateLimit('ADMIN')(request, user.id, true)
     if (!rateLimitResult.success) {
       return createSecureResponse({
         error: 'Rate limit exceeded',
