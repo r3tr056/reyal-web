@@ -30,12 +30,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen">
         <ReduxProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem={false}
-            disableTransitionOnChange
-          >
+          <ThemeProvider>
             <AuthProvider>
               <UploadProvider>
                 <div className="min-h-screen bg-page">

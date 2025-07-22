@@ -34,6 +34,7 @@ import { useAppDispatch, useAppSelector } from '@/lib/store/hooks'
 import { useUpload } from '@/lib/providers/UploadProvider'
 import { signOut } from '@/lib/store/slices/authSlice'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface HeaderProps {
   className?: string
@@ -238,6 +239,9 @@ export function Header({ className }: HeaderProps) {
 
         {/* Right side actions */}
         <div className="flex items-center space-x-3">
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
           {/* Notifications */}
           {user && (
             <Button

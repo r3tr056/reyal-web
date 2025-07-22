@@ -65,7 +65,7 @@ const initialState: SettingsState = {
       sms: false,
       push: true
     },
-    theme: 'system'
+    theme: 'dark'
   },
   initialized: false
 }
@@ -102,6 +102,9 @@ const settingsSlice = createSlice({
         ...state.userPreferences.notifications,
         ...action.payload
       }
+    },
+    setTheme: (state, action: PayloadAction<'light' | 'dark' | 'system'>) => {
+      state.userPreferences.theme = action.payload
     },
     initializeDefaults: (state, action: PayloadAction<{
       defaultMaterial?: string
@@ -141,6 +144,7 @@ export const {
   updateUserPreferences,
   updateDefaultPrintSettings,
   updateNotificationSettings,
+  setTheme,
   initializeDefaults
 } = settingsSlice.actions
 
@@ -151,3 +155,4 @@ export const selectEstimateData = (state: { settings: SettingsState }) => state.
 export const selectUserPreferences = (state: { settings: SettingsState }) => state.settings.userPreferences
 export const selectDefaultPrintSettings = (state: { settings: SettingsState }) => state.settings.userPreferences.defaultPrintSettings
 export const selectSettingsInitialized = (state: { settings: SettingsState }) => state.settings.initialized
+export const selectTheme = (state: { settings: SettingsState }) => state.settings.userPreferences.theme
