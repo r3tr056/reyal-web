@@ -31,6 +31,7 @@ import {
   Phone,
 } from 'lucide-react'
 import { useAppDispatch, useAppSelector } from '@/lib/store/hooks'
+import { useUpload } from '@/lib/providers/UploadProvider'
 import { signOut } from '@/lib/store/slices/authSlice'
 import { cn } from '@/lib/utils'
 
@@ -42,6 +43,7 @@ export function Header({ className }: HeaderProps) {
   const dispatch = useAppDispatch()
   const { user, loading } = useAppSelector((state) => state.auth)
   const { itemCount } = useAppSelector((state) => state.cart)
+  const { openUploadModal } = useUpload()
   const pathname = usePathname()
   const router = useRouter()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -252,6 +254,17 @@ export function Header({ className }: HeaderProps) {
             </Button>
           )}
 
+          {/* Upload Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="border border-primary/20 bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary transition-all duration-300"
+            onClick={openUploadModal}
+          >
+            <Upload className="h-4 w-4 mr-2 transition-transform hover:scale-110" />
+            Upload
+          </Button>
+
           {/* Cart */}
           <Button
             variant="ghost"
@@ -308,7 +321,7 @@ export function Header({ className }: HeaderProps) {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={() => router.push('/?upload=true')}
+                  onClick={openUploadModal}
                   className="cursor-pointer"
                 >
                   <Upload className="mr-2 h-4 w-4" />

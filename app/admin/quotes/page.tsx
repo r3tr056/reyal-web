@@ -9,101 +9,86 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { 
-  FileText, 
   Eye, 
-  CheckCircle,
+  Clock, 
+  CheckCircle, 
   XCircle,
-  Clock,
   Search,
   Filter,
   RefreshCw,
-  User,
-  Calendar,
-  DollarSign
+  FileText,
+  DollarSign,
+  Download,
+  Send,
+  AlertCircle
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase/client'
-import { Database } from '@/lib/types/database'
 
-type Quote = Database['public']['Tables']['quotes']['Row']
-type UploadedFile = Database['public']['Tables']['uploaded_files']['Row']
-type Profile = Database['public']['Tables']['profiles']['Row']
-
-interface QuoteWithDetails extends Quote {
-  file: UploadedFile
-  user: Profile
+interface Quote {
+  id: string
+  quote_number: string
+  customer_name: string
+  customer_email: string
+  file_name: string
+  material: string
+  color: string
+  quantity: number
+  urgency: string
+  status: string
+  estimated_cost: number
+  final_cost: number | null
+  estimated_delivery: string
+  notes: string | null
+  admin_notes: string | null
+  created_at: string
+  updated_at: string
+  file_analysis: any
 }
 
 export default function QuotesPage() {
-  const [quotes, setQuotes] = useState<QuoteWithDetails[]>([])
-  const [filteredQuotes, setFilteredQuotes] = useState<QuoteWithDetails[]>([])
+  const [quotes, setQuotes] = useState<Quote[]>([])
+  const [filteredQuotes, setFilteredQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [selectedQuote, setSelectedQuote] = useState<QuoteWithDetails | null>(null)
+  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [adminNotes, setAdminNotes] = useState('')
+  const [finalCost, setFinalCost] = useState('')
 
-  useEffect(() => {
-    loadQuotes()
-  }, [])
-
-  useEffect(() => {
-    filterQuotes()
-  }, [quotes, searchTerm, statusFilter])
-
-  const loadQuotes = async () => {
+  const fetchQuotes = async () => {
     try {
-      const supabaseClient = supabase()
+      setLoading(true)
+      const response = await fetch('/api/admin/quotes')
       
-      // Get quotes with related data
-      const { data: quotesData, error } = await supabaseClient
-        .from('quotes')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Get related data separately
-      const quotesWithDetails = await Promise.all(
-        (quotesData || []).map(async (quote: any) => {
-          const typedQuote = quote as Quote
-          const [userResponse, fileResponse] = await Promise.all([
-            supabaseClient
-              .from('profiles')
-              .select('*')
-              .eq('id', typedQuote.user_id)
-              .single(),
-            supabaseClient
-              .from('uploaded_files')
-              .select('*')
-              .eq('id', typedQuote.file_id)
-              .single()
-          ])
-
-          return {
-            ...typedQuote,
-            user: userResponse.data || {} as Profile,
-            file: fileResponse.data || {} as UploadedFile
-          }
-        })
-      )
-
-      setQuotes(quotesWithDetails as QuoteWithDetails[])
+      if (!response.ok) {
+        throw new Error('Failed to fetch quotes')
+      }
+      
+      const data = await response.json()
+      setQuotes(data.quotes || [])
+      setFilteredQuotes(data.quotes || [])
     } catch (error) {
-      console.error('Failed to load quotes:', error)
+      console.error('Error fetching quotes:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const filterQuotes = () => {
+  useEffect(() => {
+    fetchQuotes()
+  }, [])
+
+  useEffect(() => {
     let filtered = quotes
 
     if (searchTerm) {
       filtered = filtered.filter(quote => 
-        quote.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        quote.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        quote.file?.original_filename?.toLowerCase().includes(searchTerm.toLowerCase())
+        quote.quote_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.file_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        quote.customer_email.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -112,501 +97,506 @@ export default function QuotesPage() {
     }
 
     setFilteredQuotes(filtered)
-  }
+  }, [quotes, searchTerm, statusFilter])
 
-  const updateQuoteStatus = async (quoteId: string, newStatus: string) => {
-    setIsUpdating(true)
+  const updateQuoteStatus = async (quoteId: string, status: string, finalCost?: number, notes?: string) => {
     try {
-      const supabaseClient = supabase()
-      
-      const { error } = await supabaseClient
-        .from('quotes')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
+      setIsUpdating(true)
+      const response = await fetch(`/api/admin/quotes/${quoteId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          status, 
+          final_cost: finalCost,
+          admin_notes: notes 
         })
-        .eq('id', quoteId)
+      })
 
-      if (error) throw error
-
-      // If quote is accepted, create a print job
-      if (newStatus === 'accepted') {
-        const quote = quotes.find(q => q.id === quoteId)
-        if (quote) {
-          await supabaseClient
-            .from('print_jobs')
-            .insert({
-              quote_id: quoteId,
-              user_id: quote.user_id,
-              status: 'pending'
-            })
-        }
+      if (!response.ok) {
+        throw new Error('Failed to update quote')
       }
 
-      await loadQuotes()
-      
+      await fetchQuotes()
+      setSelectedQuote(null)
+      setAdminNotes('')
+      setFinalCost('')
     } catch (error) {
-      console.error('Failed to update quote status:', error)
+      console.error('Error updating quote:', error)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const sendQuoteToCustomer = async (quoteId: string) => {
+    try {
+      setIsUpdating(true)
+      const response = await fetch(`/api/admin/quotes/${quoteId}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send quote')
+      }
+
+      await fetchQuotes()
+    } catch (error) {
+      console.error('Error sending quote:', error)
     } finally {
       setIsUpdating(false)
     }
   }
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { variant: 'secondary' as const, label: 'Pending', icon: Clock },
-      accepted: { variant: 'default' as const, label: 'Accepted', icon: CheckCircle },
-      rejected: { variant: 'destructive' as const, label: 'Rejected', icon: XCircle },
-      expired: { variant: 'outline' as const, label: 'Expired', icon: Clock }
+    const statusMap = {
+      pending: { variant: 'secondary' as const, icon: Clock, color: 'text-orange-400' },
+      reviewing: { variant: 'default' as const, icon: Eye, color: 'text-blue-400' },
+      quoted: { variant: 'default' as const, icon: FileText, color: 'text-purple-400' },
+      accepted: { variant: 'default' as const, icon: CheckCircle, color: 'text-emerald-400' },
+      rejected: { variant: 'destructive' as const, icon: XCircle, color: 'text-red-400' },
+      expired: { variant: 'outline' as const, icon: AlertCircle, color: 'text-gray-400' }
     }
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    const IconComponent = config.icon
-
+    
+    const config = statusMap[status as keyof typeof statusMap] || statusMap.pending
+    const Icon = config.icon
+    
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
-        <IconComponent className="h-3 w-3" />
-        {config.label}
+        <Icon className="h-3 w-3" />
+        {status}
       </Badge>
     )
   }
 
-  const isQuoteExpired = (validUntil: string) => {
-    return new Date(validUntil) < new Date()
+  const getUrgencyBadge = (urgency: string) => {
+    const urgencyMap = {
+      standard: { variant: 'outline' as const, color: 'text-gray-400' },
+      express: { variant: 'secondary' as const, color: 'text-orange-400' },
+      rush: { variant: 'destructive' as const, color: 'text-red-400' }
+    }
+    
+    const config = urgencyMap[urgency as keyof typeof urgencyMap] || urgencyMap.standard
+    
+    return (
+      <Badge variant={config.variant}>
+        {urgency}
+      </Badge>
+    )
+  }
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const exportQuotes = () => {
+    const csvContent = "data:text/csv;charset=utf-8," + 
+      "Quote #,Customer,Email,File,Material,Color,Quantity,Urgency,Status,Estimated Cost,Final Cost,Created\n" +
+      filteredQuotes.map(quote => 
+        `${quote.quote_number},${quote.customer_name},${quote.customer_email},${quote.file_name},${quote.material},${quote.color},${quote.quantity},${quote.urgency},${quote.status},${quote.estimated_cost},${quote.final_cost || ''},${quote.created_at}`
+      ).join("\n")
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", "quotes.csv")
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-32 bg-gray-200 rounded"></div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-96">
+        <RefreshCw className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
-
-  const totalQuotes = quotes.length
-  const pendingQuotes = quotes.filter(q => q.status === 'pending').length
-  const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length
-  const totalValue = quotes
-    .filter(q => q.status === 'accepted')
-    .reduce((sum, q) => sum + q.total_cost, 0)
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Quotes Management</h1>
-          <p className="text-muted-foreground">
-            Review and manage customer quotes
-          </p>
+          <h1 className="text-3xl font-bold text-white">Quote Management</h1>
+          <p className="text-gray-400 mt-1">Review and manage customer quote requests</p>
         </div>
-        <Button onClick={loadQuotes} disabled={loading}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button onClick={exportQuotes} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button onClick={fetchQuotes} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* Quote Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium">Total Quotes</p>
-                <p className="text-2xl font-bold">{totalQuotes}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="text-sm font-medium">Pending</p>
-                <p className="text-2xl font-bold">{pendingQuotes}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium">Accepted</p>
-                <p className="text-2xl font-bold">{acceptedQuotes}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-sm font-medium">Total Value</p>
-                <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search quotes by ID, user, or filename..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="accepted">Accepted</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="expired">Expired</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quotes Table */}
-      <Card>
+      <Card className="bg-gray-900 border-gray-800">
         <CardHeader>
-          <CardTitle>
-            Quotes ({filteredQuotes.length})
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search by quote number, customer, or file name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-40 bg-gray-800 border-gray-700">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="reviewing">Reviewing</SelectItem>
+                  <SelectItem value="quoted">Quoted</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Quote ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>File</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Valid Until</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredQuotes.map((quote) => (
-                <TableRow key={quote.id} className={isQuoteExpired(quote.valid_until) && quote.status === 'pending' ? 'opacity-60' : ''}>
-                  <TableCell className="font-mono text-sm">
-                    {quote.id.slice(0, 8)}...
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="truncate max-w-32">
-                        {quote.user?.email || 'Unknown'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="truncate max-w-32">
-                        {quote.file?.original_filename || 'Unknown'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-semibold">${quote.total_cost.toFixed(2)}</span>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(quote.status)}
-                    {isQuoteExpired(quote.valid_until) && quote.status === 'pending' && (
-                      <div className="text-xs text-red-600 mt-1">Expired</div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(quote.valid_until).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(quote.created_at).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => setSelectedQuote(quote)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Quote Details</DialogTitle>
-                          </DialogHeader>
-                          {selectedQuote && (
-                            <QuoteDetailsDialog 
-                              quote={selectedQuote}
-                              onStatusUpdate={updateQuoteStatus}
-                              isUpdating={isUpdating}
-                            />
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                      
-                      {/* Quick action buttons based on status */}
-                      {quote.status === 'pending' && !isQuoteExpired(quote.valid_until) && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateQuoteStatus(quote.id, 'accepted')}
-                            className="text-green-600 hover:text-green-700"
-                            title="Accept Quote"
-                          >
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateQuoteStatus(quote.id, 'rejected')}
-                            className="text-red-600 hover:text-red-700"
-                            title="Reject Quote"
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
+          <div className="rounded-md border border-gray-800">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800">
+                  <TableHead className="text-gray-300">Quote #</TableHead>
+                  <TableHead className="text-gray-300">Customer</TableHead>
+                  <TableHead className="text-gray-300">File</TableHead>
+                  <TableHead className="text-gray-300">Material</TableHead>
+                  <TableHead className="text-gray-300">Status</TableHead>
+                  <TableHead className="text-gray-300">Urgency</TableHead>
+                  <TableHead className="text-gray-300">Cost</TableHead>
+                  <TableHead className="text-gray-300">Created</TableHead>
+                  <TableHead className="text-gray-300">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredQuotes.length > 0 ? (
+                  filteredQuotes.map((quote) => (
+                    <TableRow key={quote.id} className="border-gray-800">
+                      <TableCell className="font-medium text-white">
+                        {quote.quote_number}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-white">{quote.customer_name}</p>
+                          <p className="text-sm text-gray-400">{quote.customer_email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-white">{quote.file_name}</p>
+                          <p className="text-sm text-gray-400">Qty: {quote.quantity}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-white">{quote.material}</p>
+                          <p className="text-sm text-gray-400">{quote.color}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(quote.status)}
+                      </TableCell>
+                      <TableCell>
+                        {getUrgencyBadge(quote.urgency)}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-emerald-400 font-medium">
+                            {formatCurrency(quote.final_cost || quote.estimated_cost)}
+                          </p>
+                          {quote.final_cost && quote.final_cost !== quote.estimated_cost && (
+                            <p className="text-xs text-gray-400 line-through">
+                              {formatCurrency(quote.estimated_cost)}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-gray-300">
+                        {formatDate(quote.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedQuote(quote)
+                                setAdminNotes(quote.admin_notes || '')
+                                setFinalCost(quote.final_cost?.toString() || quote.estimated_cost.toString())
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Review
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl bg-gray-900 border-gray-800">
+                            <DialogHeader>
+                              <DialogTitle className="text-white">
+                                Quote Details - {selectedQuote?.quote_number}
+                              </DialogTitle>
+                            </DialogHeader>
+                            {selectedQuote && (
+                              <div className="space-y-6">
+                                <div className="grid grid-cols-2 gap-6">
+                                  <div>
+                                    <Label className="text-gray-300">Customer Information</Label>
+                                    <div className="mt-2 p-3 bg-gray-800 rounded-lg">
+                                      <p className="font-medium text-white">{selectedQuote.customer_name}</p>
+                                      <p className="text-gray-400">{selectedQuote.customer_email}</p>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <Label className="text-gray-300">Quote Information</Label>
+                                    <div className="mt-2 p-3 bg-gray-800 rounded-lg">
+                                      <div className="flex justify-between items-center mb-2">
+                                        <span className="text-gray-400">Status:</span>
+                                        {getStatusBadge(selectedQuote.status)}
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-400">Urgency:</span>
+                                        {getUrgencyBadge(selectedQuote.urgency)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
 
-          {filteredQuotes.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No quotes found matching your criteria
-            </div>
-          )}
+                                <div>
+                                  <Label className="text-gray-300">File Details</Label>
+                                  <div className="mt-2 p-3 bg-gray-800 rounded-lg">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <p className="text-white font-medium">{selectedQuote.file_name}</p>
+                                        <p className="text-sm text-gray-400">Quantity: {selectedQuote.quantity}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-white">{selectedQuote.material} - {selectedQuote.color}</p>
+                                        <p className="text-sm text-gray-400">Delivery: {formatDate(selectedQuote.estimated_delivery)}</p>
+                                      </div>
+                                    </div>
+                                    {selectedQuote.file_analysis && (
+                                      <div className="mt-3 pt-3 border-t border-gray-700">
+                                        <h4 className="text-sm font-medium text-gray-300 mb-2">File Analysis</h4>
+                                        <div className="grid grid-cols-3 gap-2 text-xs">
+                                          <div>
+                                            <span className="text-gray-400">Volume:</span>
+                                            <span className="text-white ml-1">
+                                              {selectedQuote.file_analysis.volume?.toFixed(2)} cm³
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-400">Print Time:</span>
+                                            <span className="text-white ml-1">
+                                              {Math.round(selectedQuote.file_analysis.printTime / 60)}h
+                                            </span>
+                                          </div>
+                                          <div>
+                                            <span className="text-gray-400">Support:</span>
+                                            <span className="text-white ml-1">
+                                              {selectedQuote.file_analysis.supportRequired ? 'Yes' : 'No'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {selectedQuote.notes && (
+                                  <div>
+                                    <Label className="text-gray-300">Customer Notes</Label>
+                                    <div className="mt-2 p-3 bg-gray-800 rounded-lg">
+                                      <p className="text-white">{selectedQuote.notes}</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label className="text-gray-300">Final Cost ($)</Label>
+                                    <Input
+                                      type="number"
+                                      value={finalCost}
+                                      onChange={(e) => setFinalCost(e.target.value)}
+                                      className="mt-2 bg-gray-800 border-gray-700 text-white"
+                                      placeholder="Enter final cost"
+                                    />
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      Estimated: {formatCurrency(selectedQuote.estimated_cost)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <Label className="text-gray-300">Admin Notes</Label>
+                                    <Textarea
+                                      value={adminNotes}
+                                      onChange={(e) => setAdminNotes(e.target.value)}
+                                      className="mt-2 bg-gray-800 border-gray-700 text-white"
+                                      placeholder="Add internal notes..."
+                                      rows={3}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="flex justify-between items-center pt-4 border-t border-gray-800">
+                                  <div className="flex gap-2">
+                                    {selectedQuote.status === 'pending' && (
+                                      <Button
+                                        onClick={() => updateQuoteStatus(selectedQuote.id, 'reviewing')}
+                                        disabled={isUpdating}
+                                        size="sm"
+                                      >
+                                        Start Review
+                                      </Button>
+                                    )}
+                                    {(selectedQuote.status === 'reviewing' || selectedQuote.status === 'pending') && (
+                                      <>
+                                        <Button
+                                          onClick={() => updateQuoteStatus(
+                                            selectedQuote.id, 
+                                            'quoted', 
+                                            parseFloat(finalCost), 
+                                            adminNotes
+                                          )}
+                                          disabled={isUpdating || !finalCost}
+                                          size="sm"
+                                        >
+                                          <Send className="h-4 w-4 mr-1" />
+                                          Send Quote
+                                        </Button>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() => updateQuoteStatus(selectedQuote.id, 'rejected', undefined, adminNotes)}
+                                          disabled={isUpdating}
+                                          size="sm"
+                                        >
+                                          Reject
+                                        </Button>
+                                      </>
+                                    )}
+                                    {selectedQuote.status === 'quoted' && (
+                                      <Button
+                                        onClick={() => sendQuoteToCustomer(selectedQuote.id)}
+                                        disabled={isUpdating}
+                                        size="sm"
+                                        variant="outline"
+                                      >
+                                        <Send className="h-4 w-4 mr-1" />
+                                        Resend Quote
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <div className="text-sm text-gray-400">
+                                    Created: {formatDate(selectedQuote.created_at)}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8 text-gray-400">
+                      No quotes found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Total Quotes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{quotes.length}</div>
+            <p className="text-xs text-gray-400 mt-1">All time</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Pending Review</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-400">
+              {quotes.filter(q => q.status === 'pending').length}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Awaiting review</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Quoted</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-400">
+              {quotes.filter(q => q.status === 'quoted').length}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Sent to customers</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Accepted</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-400">
+              {quotes.filter(q => q.status === 'accepted').length}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Customer approved</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Rush Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-400">
+              {quotes.filter(q => q.urgency === 'rush').length}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">High priority</p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
-}
-
-interface QuoteDetailsDialogProps {
-  quote: QuoteWithDetails
-  onStatusUpdate: (quoteId: string, status: string) => Promise<void>
-  isUpdating: boolean
-}
-
-function QuoteDetailsDialog({ quote, onStatusUpdate, isUpdating }: QuoteDetailsDialogProps) {
-  const costBreakdown = quote.cost_breakdown as any || {}
-  const settings = quote.settings as any || {}
-
-  return (
-    <div className="space-y-6">
-      {/* Quote Overview */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm font-medium">Quote ID</Label>
-          <p className="font-mono text-sm">{quote.id}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Status</Label>
-          <div className="mt-1">
-            {getStatusBadge(quote.status)}
-          </div>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Customer</Label>
-          <p>{quote.user?.email}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Total Cost</Label>
-          <p className="font-semibold text-lg">${quote.total_cost.toFixed(2)}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Created</Label>
-          <p>{new Date(quote.created_at).toLocaleString()}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Valid Until</Label>
-          <p>{new Date(quote.valid_until).toLocaleString()}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Estimated Days</Label>
-          <p>{quote.estimated_days} days</p>
-        </div>
-      </div>
-
-      {/* File Info */}
-      <div>
-        <Label className="text-sm font-medium">File Details</Label>
-        <div className="mt-2 p-3 border rounded-lg space-y-2">
-          <div className="font-medium">{quote.file?.original_filename}</div>
-          <div className="text-sm text-muted-foreground">
-            Size: {((quote.file?.file_size || 0) / 1024 / 1024).toFixed(2)} MB
-          </div>
-        </div>
-      </div>
-
-      {/* Print Settings */}
-      <div>
-        <Label className="text-sm font-medium">Print Configuration</Label>
-        <div className="mt-2 p-3 border rounded-lg space-y-2">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-medium">Material:</span> {settings.material || 'N/A'}
-            </div>
-            <div>
-              <span className="font-medium">Quality:</span> {settings.quality || 'N/A'}
-            </div>
-            <div>
-              <span className="font-medium">Infill:</span> {settings.infill || 'N/A'}%
-            </div>
-            <div>
-              <span className="font-medium">Supports:</span> {settings.supports ? 'Yes' : 'No'}
-            </div>
-            <div>
-              <span className="font-medium">Printer:</span> {settings.printer || 'N/A'}
-            </div>
-            <div>
-              <span className="font-medium">Copies:</span> {settings.copies || 1}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Cost Breakdown */}
-      <div>
-        <Label className="text-sm font-medium">Cost Breakdown</Label>
-        <div className="mt-2 p-3 border rounded-lg space-y-2">
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Material Cost:</span>
-              <span>${(costBreakdown.materialCost || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Labor Cost:</span>
-              <span>${(costBreakdown.laborCost || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Base Cost:</span>
-              <span>${(costBreakdown.baseCost || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-green-600">
-              <span>Profit Margin:</span>
-              <span>+${(costBreakdown.profit || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>${(costBreakdown.subtotal || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tax:</span>
-              <span>+${(costBreakdown.tax || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold border-t pt-1">
-              <span>Total:</span>
-              <span>${quote.total_cost.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Actions */}
-      {quote.status === 'pending' && !isQuoteExpired(quote.valid_until) && (
-        <div className="flex gap-4">
-          <Button 
-            onClick={() => onStatusUpdate(quote.id, 'accepted')}
-            disabled={isUpdating}
-            className="flex-1"
-          >
-            {isUpdating ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Accept Quote
-              </>
-            )}
-          </Button>
-          <Button 
-            variant="destructive"
-            onClick={() => onStatusUpdate(quote.id, 'rejected')}
-            disabled={isUpdating}
-            className="flex-1"
-          >
-            <XCircle className="h-4 w-4 mr-2" />
-            Reject Quote
-          </Button>
-        </div>
-      )}
-
-      {isQuoteExpired(quote.valid_until) && quote.status === 'pending' && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-700 text-sm">
-            This quote has expired and can no longer be accepted.
-          </p>
-        </div>
-      )}
-    </div>
-  )
-
-  function getStatusBadge(status: string) {
-    const statusConfig = {
-      pending: { variant: 'secondary' as const, label: 'Pending', icon: Clock },
-      accepted: { variant: 'default' as const, label: 'Accepted', icon: CheckCircle },
-      rejected: { variant: 'destructive' as const, label: 'Rejected', icon: XCircle },
-      expired: { variant: 'outline' as const, label: 'Expired', icon: Clock }
-    }
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    const IconComponent = config.icon
-
-    return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
-        <IconComponent className="h-3 w-3" />
-        {config.label}
-      </Badge>
-    )
-  }
-
-  function isQuoteExpired(validUntil: string) {
-    return new Date(validUntil) < new Date()
-  }
 }

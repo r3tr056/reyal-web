@@ -209,13 +209,15 @@ export const fetchMarketplaceProducts = createAsyncThunk(
         ...product,
         designer: product.profiles?.full_name || 'Unknown Designer',
       }))
-
+      
+      const isAppending = page > 1
       return {
         products: transformedData,
         total: count || 0,
         page,
         limit,
         hasMore: offset + limit < (count || 0),
+        isAppending
       }
     } catch (error: any) {
       console.error('Error fetching marketplace products:', error)

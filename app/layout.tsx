@@ -2,9 +2,11 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ReduxProvider } from '@/lib/store/ReduxProvider'
 import { AuthProvider } from '@/lib/providers/AuthProvider'
+import { UploadProvider } from '@/lib/providers/UploadProvider'
 import { Header } from '@/components/layout/header'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
+import { GlobalUploadModal } from '@/components/global-upload-modal'
 
 export const metadata: Metadata = {
   title: 'REYAL - 3D Printing Services',
@@ -35,13 +37,16 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider>
-              <div className="min-h-screen bg-page">
-                <Header />
-                <main className="relative">
-                  {children}
-                </main>
-              </div>
-              <Toaster />
+              <UploadProvider>
+                <div className="min-h-screen bg-page">
+                  <Header />
+                  <main className="relative">
+                    {children}
+                  </main>
+                </div>
+                <GlobalUploadModal />
+                <Toaster />
+              </UploadProvider>
             </AuthProvider>
           </ThemeProvider>
         </ReduxProvider>

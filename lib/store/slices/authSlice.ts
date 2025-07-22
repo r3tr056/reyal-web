@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { User } from '@supabase/supabase-js'
+import { User, AuthError } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase/client'
 
 export interface Profile {
@@ -50,14 +50,13 @@ export const initializeAuth = createAsyncThunk(
       }
 
       if (session?.user) {
-        // Get user profile
         const { data: profile, error: profileError } = await supabase()
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
 
-        if (profileError) {
+        if (profileError && profileError.code !== 'PGRST116') {
           console.error('Profile fetch error:', profileError)
         }
 
@@ -73,7 +72,7 @@ export const initializeAuth = createAsyncThunk(
       }
     } catch (error: any) {
       console.error('Auth initialization error:', error)
-      return rejectWithValue(error.message)
+      return rejectWithValue(error.message || 'Failed to initialize authentication')
     }
   }
 )
@@ -88,26 +87,17 @@ export const signIn = createAsyncThunk(
       })
 
       if (error) {
-        let errorMessage = error.message
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'Invalid email or password. Please check your credentials.'
-        } else if (error.message.includes('Email not confirmed')) {
-          errorMessage = 'Please verify your email address before signing in.'
-        } else if (error.message.includes('Too many requests')) {
-          errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.'
-        }
-        return rejectWithValue(errorMessage)
+        return rejectWithValue(getAuthErrorMessage(error))
       }
 
       if (data.user) {
-        // Get user profile
         const { data: profile, error: profileError } = await supabase()
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
           .single()
 
-        if (profileError) {
+        if (profileError && profileError.code !== 'PGRST116') {
           console.error('Profile fetch error:', profileError)
         }
 
@@ -132,18 +122,20 @@ export const signUp = createAsyncThunk(
     password,
     fullName,
     phone,
+    redirectTo,
   }: {
     email: string
     password: string
     fullName?: string
     phone?: string
+    redirectTo?: string
   }, { rejectWithValue }) => {
     try {
       const { data, error } = await supabase().auth.signUp({
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectTo || `${window.location.origin}/auth/callback`,
           data: {
             full_name: fullName?.trim() || null,
             phone: phone?.trim() || null,
@@ -152,15 +144,7 @@ export const signUp = createAsyncThunk(
       })
 
       if (error) {
-        let errorMessage = error.message
-        if (error.message.includes('User already registered')) {
-          errorMessage = 'An account with this email already exists. Please sign in instead.'
-        } else if (error.message.includes('Password should be at least')) {
-          errorMessage = 'Password must be at least 6 characters long.'
-        } else if (error.message.includes('Unable to validate email')) {
-          errorMessage = 'Invalid email address. Please check and try again.'
-        }
-        return rejectWithValue(errorMessage)
+        return rejectWithValue(getAuthErrorMessage(error))
       }
 
       return {
@@ -174,6 +158,25 @@ export const signUp = createAsyncThunk(
     }
   }
 )
+
+function getAuthErrorMessage(error: AuthError): string {
+  switch (error.message) {
+    case 'Invalid login credentials':
+      return 'Invalid email or password. Please check your credentials.'
+    case 'Email not confirmed':
+      return 'Please verify your email address before signing in.'
+    case 'User already registered':
+      return 'An account with this email already exists. Please sign in instead.'
+    case 'Password should be at least 6 characters':
+      return 'Password must be at least 6 characters long.'
+    case 'Unable to validate email address: invalid format':
+      return 'Invalid email address. Please check and try again.'
+    case 'For security purposes, you can only request this once every 60 seconds':
+      return 'Too many requests. Please wait a minute before trying again.'
+    default:
+      return error.message
+  }
+}
 
 export const signOut = createAsyncThunk(
   'auth/signOut',
@@ -236,7 +239,7 @@ const authSlice = createSlice({
     setUser: (state, action: PayloadAction<{ user: User | null; profile?: Profile | null }>) => {
       state.user = action.payload.user
       state.isAuthenticated = !!action.payload.user
-      if (action.payload.profile) {
+      if (action.payload.profile != undefined) {
         state.profile = action.payload.profile
       }
     },
@@ -248,7 +251,6 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Initialize Auth
     builder
       .addCase(initializeAuth.pending, (state) => {
         state.loading = true

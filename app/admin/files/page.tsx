@@ -8,206 +8,168 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { 
-  Download, 
   Eye, 
-  Trash2,
+  Download, 
   Search,
   Filter,
   RefreshCw,
   FileText,
-  User,
-  Calendar,
-  HardDrive,
-  Archive
+  File,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Trash2
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase/client'
-import { Database } from '@/lib/types/database'
 
-type UploadedFile = Database['public']['Tables']['uploaded_files']['Row']
-type Profile = Database['public']['Tables']['profiles']['Row']
-
-interface FileWithUser extends UploadedFile {
-  user: Profile
-  hasQuote?: boolean
-  hasPrintJob?: boolean
+interface UploadedFile {
+  id: string
+  user_id: string
+  original_filename: string
+  filename: string
+  file_path: string
+  file_size: number
+  file_type: string
+  mime_type: string | null
+  analysis: any
+  is_analyzed: boolean
+  thumbnail_url: string | null
+  created_at: string
+  user_name?: string
+  user_email?: string
 }
 
 export default function FilesPage() {
-  const [files, setFiles] = useState<FileWithUser[]>([])
-  const [filteredFiles, setFilteredFiles] = useState<FileWithUser[]>([])
+  const [files, setFiles] = useState<UploadedFile[]>([])
+  const [filteredFiles, setFilteredFiles] = useState<UploadedFile[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [selectedFile, setSelectedFile] = useState<FileWithUser | null>(null)
+  const [selectedFile, setSelectedFile] = useState<UploadedFile | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  useEffect(() => {
-    loadFiles()
-  }, [])
-
-  useEffect(() => {
-    filterFiles()
-  }, [files, searchTerm, statusFilter])
-
-  const loadFiles = async () => {
+  const fetchFiles = async () => {
     try {
-      const supabaseClient = supabase()
+      setLoading(true)
+      const response = await fetch('/api/files')
       
-      // Get files with user data
-      const { data: filesData, error } = await supabaseClient
-        .from('uploaded_files')
-        .select(`
-          *,
-          user:profiles(*)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Check which files have quotes and print jobs
-      const filesWithRelations = await Promise.all(
-        (filesData || []).map(async (file: any) => {
-          const [quotesResponse, printJobsResponse] = await Promise.all([
-            supabaseClient
-              .from('quotes')
-              .select('id')
-              .eq('file_id', file.id)
-              .limit(1),
-            supabaseClient
-              .from('print_jobs')
-              .select('id')
-              .eq('quote_id', file.id)
-              .limit(1)
-          ])
-
-          return {
-            ...file,
-            hasQuote: (quotesResponse.data?.length || 0) > 0,
-            hasPrintJob: (printJobsResponse.data?.length || 0) > 0
-          }
-        })
-      )
-
-      setFiles(filesWithRelations as FileWithUser[])
+      if (!response.ok) {
+        throw new Error('Failed to fetch files')
+      }
+      
+      const data = await response.json()
+      setFiles(data.files || [])
+      setFilteredFiles(data.files || [])
     } catch (error) {
-      console.error('Failed to load files:', error)
+      console.error('Error fetching files:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const filterFiles = () => {
+  useEffect(() => {
+    fetchFiles()
+  }, [])
+
+  useEffect(() => {
     let filtered = files
 
     if (searchTerm) {
       filtered = filtered.filter(file => 
         file.original_filename.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        file.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        file.id.toLowerCase().includes(searchTerm.toLowerCase())
+        file.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        file.user_email?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(file => file.file_type === typeFilter)
+    }
+
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(file => file.status === statusFilter)
+      if (statusFilter === 'analyzed') {
+        filtered = filtered.filter(file => file.is_analyzed)
+      } else if (statusFilter === 'pending') {
+        filtered = filtered.filter(file => !file.is_analyzed)
+      }
     }
 
     setFilteredFiles(filtered)
-  }
-
-  const downloadFile = async (file: FileWithUser) => {
-    try {
-      const supabaseClient = supabase()
-      
-      const { data, error } = await supabaseClient.storage
-        .from('uploads')
-        .download(file.storage_path)
-
-      if (error) throw error
-
-      // Create download link
-      const url = URL.createObjectURL(data)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = file.original_filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-      
-    } catch (error) {
-      console.error('Failed to download file:', error)
-    }
-  }
+  }, [files, searchTerm, typeFilter, statusFilter])
 
   const deleteFile = async (fileId: string) => {
-    if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
-      return
-    }
-
-    setIsDeleting(true)
     try {
-      const supabaseClient = supabase()
-      
-      // First check if file has dependent records
-      const [quotesResponse, printJobsResponse] = await Promise.all([
-        supabaseClient.from('quotes').select('id').eq('file_id', fileId),
-        supabaseClient.from('print_jobs').select('id').eq('quote_id', fileId)
-      ])
+      setIsDeleting(true)
+      const response = await fetch(`/api/files/${fileId}`, {
+        method: 'DELETE'
+      })
 
-      if ((quotesResponse.data?.length || 0) > 0 || (printJobsResponse.data?.length || 0) > 0) {
-        alert('Cannot delete file: it has associated quotes or print jobs.')
-        return
+      if (!response.ok) {
+        throw new Error('Failed to delete file')
       }
 
-      // Get file info for storage deletion
-      const file = files.find(f => f.id === fileId)
-      if (!file) return
-
-      // Delete from storage
-      const { error: storageError } = await supabaseClient.storage
-        .from('uploads')
-        .remove([file.storage_path])
-
-      if (storageError) {
-        console.warn('Storage deletion failed:', storageError)
-      }
-
-      // Delete from database
-      const { error: dbError } = await supabaseClient
-        .from('uploaded_files')
-        .delete()
-        .eq('id', fileId)
-
-      if (dbError) throw dbError
-
-      // Refresh files list
-      await loadFiles()
-      
+      await fetchFiles()
+      setSelectedFile(null)
     } catch (error) {
-      console.error('Failed to delete file:', error)
-      alert('Failed to delete file. Please try again.')
+      console.error('Error deleting file:', error)
     } finally {
       setIsDeleting(false)
     }
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      uploaded: { variant: 'secondary' as const, label: 'Uploaded' },
-      analyzing: { variant: 'default' as const, label: 'Analyzing' },
-      analyzed: { variant: 'default' as const, label: 'Analyzed' },
-      error: { variant: 'destructive' as const, label: 'Error' }
+  const downloadFile = async (filePath: string, filename: string) => {
+    try {
+      const response = await fetch(`/api/files/download?path=${encodeURIComponent(filePath)}`)
+      
+      if (!response.ok) {
+        throw new Error('Failed to download file')
+      }
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Error downloading file:', error)
     }
+  }
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.uploaded
+  const getStatusBadge = (isAnalyzed: boolean, analysis: any) => {
+    if (isAnalyzed && analysis) {
+      return (
+        <Badge variant="default" className="bg-emerald-600">
+          <CheckCircle className="h-3 w-3 mr-1" />
+          Analyzed
+        </Badge>
+      )
+    } else if (isAnalyzed && !analysis) {
+      return (
+        <Badge variant="destructive">
+          <XCircle className="h-3 w-3 mr-1" />
+          Failed
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge variant="secondary">
+          <AlertCircle className="h-3 w-3 mr-1" />
+          Pending
+        </Badge>
+      )
+    }
+  }
 
-    return (
-      <Badge variant={config.variant}>
-        {config.label}
-      </Badge>
-    )
+  const getFileIcon = (fileType: string) => {
+    if (fileType === 'stl' || fileType === 'obj' || fileType === 'ply') {
+      return <FileText className="h-4 w-4 text-blue-400" />
+    }
+    return <File className="h-4 w-4 text-gray-400" />
   }
 
   const formatFileSize = (bytes: number) => {
@@ -218,370 +180,352 @@ export default function FilesPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   if (loading) {
     return (
-      <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-32 bg-gray-200 rounded"></div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center h-96">
+        <RefreshCw className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
-
-  const totalFiles = files.length
-  const totalSize = files.reduce((sum, file) => sum + file.file_size, 0)
-  const analyzedFiles = files.filter(f => f.status === 'analyzed').length
-  const errorFiles = files.filter(f => f.status === 'error').length
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">File Management</h1>
-          <p className="text-muted-foreground">
-            Manage uploaded 3D files and downloads
-          </p>
+          <h1 className="text-3xl font-bold text-white">File Management</h1>
+          <p className="text-gray-400 mt-1">Monitor and manage uploaded 3D model files</p>
         </div>
-        <Button onClick={loadFiles} disabled={loading}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button onClick={fetchFiles} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* Storage Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium">Total Files</p>
-                <p className="text-2xl font-bold">{totalFiles}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium">Storage Used</p>
-                <p className="text-2xl font-bold">{formatFileSize(totalSize)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Archive className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-sm font-medium">Analyzed</p>
-                <p className="text-2xl font-bold">{analyzedFiles}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-red-600" />
-              <div>
-                <p className="text-sm font-medium">Errors</p>
-                <p className="text-2xl font-bold">{errorFiles}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search files by name, user, or ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="uploaded">Uploaded</SelectItem>
-                <SelectItem value="analyzing">Analyzing</SelectItem>
-                <SelectItem value="analyzed">Analyzed</SelectItem>
-                <SelectItem value="error">Error</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Files Table */}
-      <Card>
+      <Card className="bg-gray-900 border-gray-800">
         <CardHeader>
-          <CardTitle>
-            Files ({filteredFiles.length})
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search by filename, user name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-gray-800 border-gray-700 text-white"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-32 bg-gray-800 border-gray-700">
+                  <Filter className="h-4 w-4 mr-2" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="stl">STL</SelectItem>
+                  <SelectItem value="obj">OBJ</SelectItem>
+                  <SelectItem value="ply">PLY</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32 bg-gray-800 border-gray-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="analyzed">Analyzed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Filename</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Relations</TableHead>
-                <TableHead>Uploaded</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFiles.map((file) => (
-                <TableRow key={file.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium truncate max-w-48">
-                          {file.original_filename}
-                        </p>
-                        <p className="text-xs text-muted-foreground uppercase">
+          <div className="rounded-md border border-gray-800">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-800">
+                  <TableHead className="text-gray-300">File</TableHead>
+                  <TableHead className="text-gray-300">User</TableHead>
+                  <TableHead className="text-gray-300">Type</TableHead>
+                  <TableHead className="text-gray-300">Size</TableHead>
+                  <TableHead className="text-gray-300">Status</TableHead>
+                  <TableHead className="text-gray-300">Uploaded</TableHead>
+                  <TableHead className="text-gray-300">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredFiles.length > 0 ? (
+                  filteredFiles.map((file) => (
+                    <TableRow key={file.id} className="border-gray-800">
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {getFileIcon(file.file_type)}
+                          <div>
+                            <p className="font-medium text-white">{file.original_filename}</p>
+                            <p className="text-sm text-gray-400">{file.filename}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-white">{file.user_name || 'Unknown'}</p>
+                          <p className="text-sm text-gray-400">{file.user_email || 'No email'}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="uppercase">
                           {file.file_type}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="truncate max-w-32">
-                        {file.user?.email || 'Unknown'}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {formatFileSize(file.file_size)}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(file.status)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      {file.hasQuote && (
-                        <Badge variant="outline" className="text-xs">Quote</Badge>
-                      )}
-                      {file.hasPrintJob && (
-                        <Badge variant="outline" className="text-xs">Print Job</Badge>
-                      )}
-                      {!file.hasQuote && !file.hasPrintJob && (
-                        <span className="text-xs text-muted-foreground">None</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {new Date(file.created_at).toLocaleDateString()}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-gray-300">
+                        {formatFileSize(file.file_size)}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(file.is_analyzed, file.analysis)}
+                      </TableCell>
+                      <TableCell className="text-gray-300">
+                        {formatDate(file.created_at)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setSelectedFile(file)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl bg-gray-900 border-gray-800">
+                              <DialogHeader>
+                                <DialogTitle className="text-white">
+                                  File Details - {selectedFile?.original_filename}
+                                </DialogTitle>
+                              </DialogHeader>
+                              {selectedFile && (
+                                <div className="space-y-6">
+                                  <div className="grid grid-cols-2 gap-6">
+                                    <div>
+                                      <h3 className="text-lg font-semibold text-white mb-3">File Information</h3>
+                                      <div className="space-y-2">
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Original Name:</span>
+                                          <span className="text-white">{selectedFile.original_filename}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">File Type:</span>
+                                          <Badge variant="outline">{selectedFile.file_type.toUpperCase()}</Badge>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">File Size:</span>
+                                          <span className="text-white">{formatFileSize(selectedFile.file_size)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">MIME Type:</span>
+                                          <span className="text-white">{selectedFile.mime_type || 'Unknown'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Status:</span>
+                                          {getStatusBadge(selectedFile.is_analyzed, selectedFile.analysis)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <h3 className="text-lg font-semibold text-white mb-3">User Information</h3>
+                                      <div className="space-y-2">
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Name:</span>
+                                          <span className="text-white">{selectedFile.user_name || 'Unknown'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Email:</span>
+                                          <span className="text-white">{selectedFile.user_email || 'No email'}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Uploaded:</span>
+                                          <span className="text-white">{formatDate(selectedFile.created_at)}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {selectedFile.analysis && (
+                                    <div>
+                                      <h3 className="text-lg font-semibold text-white mb-3">Analysis Results</h3>
+                                      <div className="p-4 bg-gray-800 rounded-lg">
+                                        <div className="grid grid-cols-3 gap-4">
+                                          <div>
+                                            <p className="text-gray-400">Volume</p>
+                                            <p className="text-white font-medium">
+                                              {selectedFile.analysis.volume?.toFixed(2)} cm³
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-gray-400">Surface Area</p>
+                                            <p className="text-white font-medium">
+                                              {selectedFile.analysis.surfaceArea?.toFixed(2)} cm²
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-gray-400">Print Time</p>
+                                            <p className="text-white font-medium">
+                                              {Math.round(selectedFile.analysis.printTime / 60)}h {selectedFile.analysis.printTime % 60}m
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-gray-400">Complexity</p>
+                                            <p className="text-white font-medium">
+                                              {selectedFile.analysis.complexity?.toFixed(1)}/10
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-gray-400">Support Required</p>
+                                            <p className="text-white font-medium">
+                                              {selectedFile.analysis.supportRequired ? 'Yes' : 'No'}
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-gray-400">Triangles</p>
+                                            <p className="text-white font-medium">
+                                              {selectedFile.analysis.triangleCount?.toLocaleString()}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        {selectedFile.analysis.dimensions && (
+                                          <div className="mt-4 pt-4 border-t border-gray-700">
+                                            <p className="text-gray-400 mb-2">Dimensions (mm)</p>
+                                            <div className="grid grid-cols-3 gap-4">
+                                              <div>
+                                                <span className="text-gray-400">X: </span>
+                                                <span className="text-white">{selectedFile.analysis.dimensions.x?.toFixed(2)}</span>
+                                              </div>
+                                              <div>
+                                                <span className="text-gray-400">Y: </span>
+                                                <span className="text-white">{selectedFile.analysis.dimensions.y?.toFixed(2)}</span>
+                                              </div>
+                                              <div>
+                                                <span className="text-gray-400">Z: </span>
+                                                <span className="text-white">{selectedFile.analysis.dimensions.z?.toFixed(2)}</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className="flex justify-between items-center pt-4 border-t border-gray-800">
+                                    <div className="flex gap-2">
+                                      <Button
+                                        onClick={() => downloadFile(selectedFile.file_path, selectedFile.original_filename)}
+                                        size="sm"
+                                      >
+                                        <Download className="h-4 w-4 mr-1" />
+                                        Download
+                                      </Button>
+                                    </div>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => deleteFile(selectedFile.id)}
+                                      disabled={isDeleting}
+                                      size="sm"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-1" />
+                                      {isDeleting ? 'Deleting...' : 'Delete'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </DialogContent>
+                          </Dialog>
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setSelectedFile(file)}
+                            onClick={() => downloadFile(file.file_path, file.original_filename)}
                           >
-                            <Eye className="h-4 w-4" />
+                            <Download className="h-4 w-4" />
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>File Details</DialogTitle>
-                          </DialogHeader>
-                          {selectedFile && (
-                            <FileDetailsDialog 
-                              file={selectedFile}
-                              onDownload={downloadFile}
-                            />
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => downloadFile(file)}
-                        title="Download File"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-
-                      {!file.hasQuote && !file.hasPrintJob && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteFile(file.id)}
-                          disabled={isDeleting}
-                          title="Delete File"
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          {filteredFiles.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              No files found matching your criteria
-            </div>
-          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-gray-400">
+                      No files found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
-    </div>
-  )
-}
 
-interface FileDetailsDialogProps {
-  file: FileWithUser
-  onDownload: (file: FileWithUser) => void
-}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Total Files</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-white">{files.length}</div>
+            <p className="text-xs text-gray-400 mt-1">Uploaded files</p>
+          </CardContent>
+        </Card>
 
-function FileDetailsDialog({ file, onDownload }: FileDetailsDialogProps) {
-  return (
-    <div className="space-y-6">
-      {/* File Info */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm font-medium">File ID</Label>
-          <p className="font-mono text-sm">{file.id}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Status</Label>
-          <div className="mt-1">
-            {getStatusBadge(file.status)}
-          </div>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Original Filename</Label>
-          <p>{file.original_filename}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">File Type</Label>
-          <p className="uppercase">{file.file_type}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">File Size</Label>
-          <p>{formatFileSize(file.file_size)}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Uploaded By</Label>
-          <p>{file.user?.email}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Upload Date</Label>
-          <p>{new Date(file.created_at).toLocaleString()}</p>
-        </div>
-        <div>
-          <Label className="text-sm font-medium">Last Updated</Label>
-          <p>{new Date(file.updated_at).toLocaleString()}</p>
-        </div>
-      </div>
-
-      {/* Analysis Data */}
-      {file.analysis_data && (
-        <div>
-          <Label className="text-sm font-medium">Analysis Results</Label>
-          <div className="mt-2 p-3 border rounded-lg bg-gray-50">
-            <pre className="text-xs overflow-auto max-h-32">
-              {JSON.stringify(file.analysis_data, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* Relations */}
-      <div>
-        <Label className="text-sm font-medium">Related Records</Label>
-        <div className="mt-2 space-y-2">
-          {file.hasQuote && (
-            <div className="flex items-center gap-2 text-sm">
-              <Badge variant="outline">Quote</Badge>
-              <span>This file has an associated quote</span>
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Analyzed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-400">
+              {files.filter(f => f.is_analyzed && f.analysis).length}
             </div>
-          )}
-          {file.hasPrintJob && (
-            <div className="flex items-center gap-2 text-sm">
-              <Badge variant="outline">Print Job</Badge>
-              <span>This file has an associated print job</span>
-            </div>
-          )}
-          {!file.hasQuote && !file.hasPrintJob && (
-            <p className="text-sm text-muted-foreground">No related records</p>
-          )}
-        </div>
-      </div>
+            <p className="text-xs text-gray-400 mt-1">Successfully analyzed</p>
+          </CardContent>
+        </Card>
 
-      {/* Actions */}
-      <div className="flex gap-4">
-        <Button 
-          onClick={() => onDownload(file)}
-          className="flex-1"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Download File
-        </Button>
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Pending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-400">
+              {files.filter(f => !f.is_analyzed).length}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Awaiting analysis</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-200">Total Storage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-400">
+              {formatFileSize(files.reduce((total, file) => total + file.file_size, 0))}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Used storage</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
-
-  function getStatusBadge(status: string) {
-    const statusConfig = {
-      uploaded: { variant: 'secondary' as const, label: 'Uploaded' },
-      analyzing: { variant: 'default' as const, label: 'Analyzing' },
-      analyzed: { variant: 'default' as const, label: 'Analyzed' },
-      error: { variant: 'destructive' as const, label: 'Error' }
-    }
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.uploaded
-
-    return (
-      <Badge variant={config.variant}>
-        {config.label}
-      </Badge>
-    )
-  }
-
-  function formatFileSize(bytes: number) {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
 }

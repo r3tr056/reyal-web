@@ -9,37 +9,44 @@ import {
   Package, 
   Users, 
   DollarSign, 
-  Printer,
   FileText,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  ShoppingCart,
+  CreditCard
 } from 'lucide-react'
-import { Database } from '@/lib/types/database'
-import { supabase } from '@/lib/supabase/client'
 import Link from 'next/link'
-
-type Quote = Database['public']['Tables']['quotes']['Row']
-type PrintJob = Database['public']['Tables']['print_jobs']['Row']
-type Profile = Database['public']['Tables']['profiles']['Row']
-type UploadedFile = Database['public']['Tables']['uploaded_files']['Row']
 
 interface DashboardStats {
   totalRevenue: number
   totalOrders: number
-  totalUsers: number
-  activePrintJobs: number
-  pendingQuotes: number
   completedOrders: number
-  errorJobs: number
-  monthlyRevenue: number
-  weeklyOrders: number
+  pendingOrders: number
+  totalPayments: number
+  outstandingInvoices: number
+  overdueInvoices: number
+  averageOrderValue: number
+}
+
+interface RecentOrder {
+  id: string
+  status: string
+  total_amount: number
+  created_at: string
+  profiles: {
+    full_name: string | null
+    email: string
+  }
+  order_items: {
+    quantity: number
+  }[]
 }
 
 interface RecentActivity {
   id: string
-  type: 'order' | 'quote' | 'print_job' | 'user'
+  type: 'order' | 'payment' | 'invoice' | 'user'
   description: string
   timestamp: string
   status?: string
@@ -49,14 +56,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalRevenue: 0,
     totalOrders: 0,
-    totalUsers: 0,
-    activePrintJobs: 0,
-    pendingQuotes: 0,
     completedOrders: 0,
-    errorJobs: 0,
-    monthlyRevenue: 0,
-    weeklyOrders: 0
+    pendingOrders: 0,
+    totalPayments: 0,
+    outstandingInvoices: 0,
+    overdueInvoices: 0,
+    averageOrderValue: 0
   })
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -66,87 +73,44 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const supabaseClient = supabase()
+      const response = await fetch('/api/admin/dashboard')
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data')
+      }
       
-      // Get basic stats
-      const [
-        quotesResponse,
-        printJobsResponse,
-        usersResponse,
-        filesResponse
-      ] = await Promise.all([
-        supabaseClient.from('quotes').select('*'),
-        supabaseClient.from('print_jobs').select('*'),
-        supabaseClient.from('profiles').select('*'),
-        supabaseClient.from('uploaded_files').select('*')
-      ])
+      const result = await response.json()
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load dashboard data')
+      }
 
-      const quotes = (quotesResponse.data || []) as Quote[]
-      const printJobs = (printJobsResponse.data || []) as PrintJob[]
-      const users = (usersResponse.data || []) as Profile[]
-      const files = (filesResponse.data || []) as UploadedFile[]
-
-      // Calculate revenue
-      const totalRevenue = quotes
-        .filter(q => q.status === 'accepted')
-        .reduce((sum, q) => sum + (q.total_cost || 0), 0)
-
-      const monthlyRevenue = quotes
-        .filter(q => {
-          const quoteDate = new Date(q.created_at)
-          const now = new Date()
-          return quoteDate.getMonth() === now.getMonth() && 
-                 quoteDate.getFullYear() === now.getFullYear() &&
-                 q.status === 'accepted'
-        })
-        .reduce((sum, q) => sum + (q.total_cost || 0), 0)
-
-      const weeklyOrders = printJobs.filter(job => {
-        const jobDate = new Date(job.created_at)
-        const weekAgo = new Date()
-        weekAgo.setDate(weekAgo.getDate() - 7)
-        return jobDate >= weekAgo
-      }).length
-
+      const { summary, recentOrders: orders } = result.data
+      
       setStats({
-        totalRevenue,
-        totalOrders: printJobs.length,
-        totalUsers: users.length,
-        activePrintJobs: printJobs.filter(j => j.status === 'printing').length,
-        pendingQuotes: quotes.filter(q => q.status === 'pending').length,
-        completedOrders: printJobs.filter(j => j.status === 'completed').length,
-        errorJobs: printJobs.filter(j => j.status === 'failed').length,
-        monthlyRevenue,
-        weeklyOrders
+        totalRevenue: summary.totalRevenue,
+        totalOrders: summary.totalOrders,
+        completedOrders: summary.completedOrders,
+        pendingOrders: summary.pendingOrders,
+        totalPayments: summary.totalPayments,
+        outstandingInvoices: summary.outstandingInvoices,
+        overdueInvoices: summary.overdueinvoices,
+        averageOrderValue: summary.averageOrderValue
       })
 
-      // Generate recent activity
+      setRecentOrders(orders || [])
+
+      // Generate recent activity from orders
       const activities: RecentActivity[] = []
-      
-      // Recent quotes
-      quotes.slice(0, 3).forEach(quote => {
+      orders?.slice(0, 5).forEach((order: RecentOrder) => {
         activities.push({
-          id: quote.id,
-          type: 'quote',
-          description: `New quote generated for $${quote.total_cost?.toFixed(2) || '0'}`,
-          timestamp: quote.created_at,
-          status: quote.status
+          id: order.id,
+          type: 'order',
+          description: `Order ${order.status} - $${order.total_amount.toFixed(2)}`,
+          timestamp: order.created_at,
+          status: order.status
         })
       })
 
-      // Recent print jobs
-      printJobs.slice(0, 3).forEach(job => {
-        activities.push({
-          id: job.id,
-          type: 'print_job',
-          description: `Print job ${job.status}`,
-          timestamp: job.updated_at,
-          status: job.status
-        })
-      })
-
-      activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      setRecentActivity(activities.slice(0, 5))
+      setRecentActivity(activities)
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
@@ -159,52 +123,52 @@ export default function AdminDashboard() {
     {
       title: 'Total Revenue',
       value: `$${stats.totalRevenue.toFixed(2)}`,
-      change: `$${stats.monthlyRevenue.toFixed(2)} this month`,
+      change: `$${stats.averageOrderValue.toFixed(2)} avg order`,
       icon: DollarSign,
       color: 'text-green-600'
     },
     {
       title: 'Total Orders',
       value: stats.totalOrders.toString(),
-      change: `${stats.weeklyOrders} this week`,
+      change: `${stats.completedOrders} completed`,
       icon: Package,
       color: 'text-blue-600'
     },
     {
-      title: 'Active Users',
-      value: stats.totalUsers.toString(),
-      change: 'Registered users',
-      icon: Users,
-      color: 'text-purple-600'
+      title: 'Pending Orders',
+      value: stats.pendingOrders.toString(),
+      change: 'Need attention',
+      icon: Clock,
+      color: 'text-orange-600'
     },
     {
-      title: 'Active Print Jobs',
-      value: stats.activePrintJobs.toString(),
-      change: `${stats.completedOrders} completed`,
-      icon: Printer,
-      color: 'text-orange-600'
+      title: 'Outstanding Invoices',
+      value: stats.outstandingInvoices.toString(),
+      change: `${stats.overdueInvoices} overdue`,
+      icon: CreditCard,
+      color: 'text-red-600'
     }
   ]
 
   const quickActions = [
     {
-      title: 'Pending Quotes',
-      count: stats.pendingQuotes,
-      href: '/admin/quotes?status=pending',
-      icon: FileText,
+      title: 'Pending Orders',
+      count: stats.pendingOrders,
+      href: '/admin/orders?status=pending',
+      icon: Package,
       color: 'bg-yellow-500'
     },
     {
-      title: 'Print Queue',
-      count: stats.activePrintJobs,
-      href: '/admin/print-jobs?status=printing',
-      icon: Printer,
+      title: 'Outstanding Invoices',
+      count: stats.outstandingInvoices,
+      href: '/admin/orders?tab=invoices',
+      icon: FileText,
       color: 'bg-blue-500'
     },
     {
-      title: 'Failed Jobs',
-      count: stats.errorJobs,
-      href: '/admin/print-jobs?status=failed',
+      title: 'Overdue Invoices',
+      count: stats.overdueInvoices,
+      href: '/admin/orders?tab=invoices&status=overdue',
       icon: AlertCircle,
       color: 'bg-red-500'
     }
@@ -294,9 +258,9 @@ export default function AdminDashboard() {
                 {recentActivity.map((activity) => (
                   <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg border">
                     <div className="flex-shrink-0">
-                      {activity.type === 'quote' && <FileText className="h-5 w-5 text-blue-500" />}
-                      {activity.type === 'print_job' && <Printer className="h-5 w-5 text-green-500" />}
-                      {activity.type === 'order' && <Package className="h-5 w-5 text-purple-500" />}
+                      {activity.type === 'order' && <Package className="h-5 w-5 text-blue-500" />}
+                      {activity.type === 'payment' && <CreditCard className="h-5 w-5 text-green-500" />}
+                      {activity.type === 'invoice' && <FileText className="h-5 w-5 text-purple-500" />}
                       {activity.type === 'user' && <Users className="h-5 w-5 text-orange-500" />}
                     </div>
                     <div className="flex-1">
@@ -308,9 +272,9 @@ export default function AdminDashboard() {
                     {activity.status && (
                       <Badge 
                         variant={
-                          activity.status === 'completed' ? 'default' :
-                          activity.status === 'pending' ? 'secondary' :
-                          activity.status === 'failed' ? 'destructive' : 'outline'
+                          ['completed', 'delivered'].includes(activity.status) ? 'default' :
+                          ['pending', 'confirmed'].includes(activity.status) ? 'secondary' :
+                          ['cancelled', 'failed'].includes(activity.status) ? 'destructive' : 'outline'
                         }
                       >
                         {activity.status}
@@ -333,15 +297,15 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-sm">Upload System: Operational</span>
+              <span className="text-sm">Order System: Operational</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-sm">File Analysis: Operational</span>
+              <span className="text-sm">Payment Processing: Operational</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-sm">Quote Generation: Operational</span>
+              <span className="text-sm">Invoice Generation: Operational</span>
             </div>
           </div>
         </CardContent>

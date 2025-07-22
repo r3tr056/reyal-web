@@ -1,4 +1,42 @@
 // Database types for the 3D printing service
+export interface Printer {
+  id: string
+  name: string
+  description: string
+  model: string
+  max_dimensions: { x: number; y: number; z: number }
+  layer_heights: number[]
+  supported_materials: string[]
+  features: string[]
+  is_active: boolean
+  hourly_rate: number
+  setup_cost: number
+}
+
+export interface Color {
+  id: string
+  name: string
+  hex_code: string
+  material_compatibility: string[]
+  additional_cost: number
+  is_available: boolean
+  sort_order: number
+}
+
+export interface ServiceableLocation {
+  id: string
+  name: string
+  state: string
+  delivery_days: number
+  same_day_available: boolean
+  express_delivery_days: number
+  rush_delivery_days: number
+  shipping_cost: number
+  free_shipping_threshold: number
+  is_active: boolean
+  sort_order: number
+}
+
 export interface FileAnalysis {
   volume: number
   surfaceArea: number
@@ -34,22 +72,20 @@ export interface PrintSettings {
   supports: boolean
   postProcessing: boolean
   urgency: 'standard' | 'express' | 'rush'
-  layerHeight?: number
-  raft?: boolean
-  brim?: boolean
+  printerModel: string
 }
 
 export interface Material {
   id: string
   name: string
   code: string
-  description: string | null
+  description: string
   price_per_hour: number
-  price_per_gram: number | null
-  density: number | null
+  price_per_gram: number
+  density: number
   available: boolean
   properties: any
-  created_at: string
+  print_settings: any
 }
 
 export interface UploadedFile {
@@ -63,7 +99,14 @@ export interface UploadedFile {
   mime_type: string | null
   analysis: FileAnalysis | null
   is_analyzed: boolean
+  thumbnail_url: string | null
   created_at: string
+}
+
+export interface UploadError {
+  message: string
+  code?: string
+  details?: Record<string, any>
 }
 
 export interface Quote {

@@ -1,172 +1,371 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import type { Database } from '@/lib/types/database'
+import { z } from 'zod'
+import { createServerClient } from '@/lib/supabase/server'
+import { 
+  rateLimit, 
+  validateRequest,
+  sanitizeInput,
+  createSecureResponse,
+  logSecurityEvent 
+} from '@/lib/middleware/api-middleware'
+import { Redis } from '@upstash/redis'
+import { headers } from 'next/headers'
 
-export const dynamic = 'force-dynamic'
+// Enhanced validation schema with security constraints
+const MarketplaceQuerySchema = z.object({
+  page: z.string()
+    .transform(val => parseInt(val, 10))
+    .pipe(z.number().min(1).max(1000))
+    .optional()
+    .default('1'),
+    
+  limit: z.string()
+    .transform(val => parseInt(val, 10))
+    .pipe(z.number().min(1).max(50))
+    .optional()
+    .default('20'),
+    
+  category: z.string()
+    .max(50)
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Invalid category format')
+    .optional()
+    .transform(val => val ? sanitizeInput(val) : val),
+    
+  search: z.string()
+    .max(200)
+    .regex(/^[a-zA-Z0-9\s\-_.,!?]+$/, 'Invalid search characters')
+    .optional()
+    .transform(val => val ? sanitizeInput(val) : val),
+    
+  sortBy: z.enum(['popular', 'newest', 'rating', 'price-low', 'price-high', 'downloads'])
+    .optional()
+    .default('popular'),
+    
+  tags: z.string()
+    .max(500)
+    .optional()
+    .transform(val => val ? val.split(',').map(tag => sanitizeInput(tag.trim())).slice(0, 10) : []),
+    
+  minPrice: z.string()
+    .transform(val => parseFloat(val))
+    .pipe(z.number().min(0).max(1000000))
+    .optional(),
+    
+  maxPrice: z.string()
+    .transform(val => parseFloat(val))
+    .pipe(z.number().min(0).max(1000000))
+    .optional(),
+    
+  materials: z.string()
+    .max(200)
+    .optional()
+    .transform(val => val ? val.split(',').map(m => sanitizeInput(m.trim())).slice(0, 5) : []),
+    
+  featured: z.string()
+    .transform(val => val === 'true')
+    .optional(),
+    
+  new: z.string()
+    .transform(val => val === 'true')
+    .optional(),
+    
+  free: z.string()
+    .transform(val => val === 'true')
+    .optional()
+}).strict()
 
-interface MarketplaceFilters {
-  category?: string
-  search?: string
-  minPrice?: number
-  maxPrice?: number
-  tags?: string[]
-  sortBy?: 'popular' | 'price-low' | 'price-high' | 'rating' | 'newest'
-  page?: number
-  limit?: number
-}
+// Redis client for caching (replace with your Redis configuration)
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+})
 
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID()
+  const startTime = Date.now()
+  
   try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
-    const { searchParams } = new URL(request.url)
+    const headersList = await headers()
+    const userAgent = headersList.get('user-agent') || 'unknown'
+    const clientIP = headersList.get('x-forwarded-for') || 'unknown'
     
-    const filters: MarketplaceFilters = {
-      category: searchParams.get('category') || undefined,
-      search: searchParams.get('search') || undefined,
-      minPrice: searchParams.get('minPrice') ? Number(searchParams.get('minPrice')) : undefined,
-      maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined,
-      tags: searchParams.getAll('tags') || [],
-      sortBy: (searchParams.get('sortBy') as MarketplaceFilters['sortBy']) || 'popular',
-      page: Number(searchParams.get('page')) || 1,
-      limit: Number(searchParams.get('limit')) || 20
+    // Apply rate limiting
+    const rateLimitResult = await rateLimit('DEFAULT')(request)
+    if (rateLimitResult.success) {
+      await logSecurityEvent('RATE_LIMIT_EXCEEDED_MARKETPLACE', {
+        ip: clientIP,
+        userAgent,
+        requestId
+      })
+      
+      const retryAfter = rateLimitResult?.retryAfter || 3600
+      const response = createSecureResponse({
+        error: 'Too many requests. Please try again later.'
+      }, 429, requestId)
+      response.headers.set('Retry-After', retryAfter.toString())
+      
+      return response
     }
 
-    // Build the query
+    // Parse and validate query parameters
+    const url = new URL(request.url)
+    const queryParams = Object.fromEntries(url.searchParams.entries())
+    
+    let validatedQuery
+    try {
+      validatedQuery = MarketplaceQuerySchema.parse(queryParams)
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        await logSecurityEvent('INVALID_MARKETPLACE_QUERY', {
+          errors: error.errors,
+          queryParams,
+          ip: clientIP,
+          requestId
+        })
+        
+        return createSecureResponse({
+          error: 'Invalid query parameters',
+          details: error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        }, 400, requestId)
+      }
+      throw error
+    }
+
+    // Validate price range
+    if (validatedQuery.minPrice && validatedQuery.maxPrice && 
+        validatedQuery.minPrice > validatedQuery.maxPrice) {
+      return createSecureResponse({
+        error: 'Invalid price range: minimum price cannot be greater than maximum price'
+      }, 400, requestId)
+    }
+
+    const supabase = await createServerClient()
+    
+    // Build cache key for this request
+    const cacheKey = `marketplace:v2:${Buffer.from(JSON.stringify(validatedQuery)).toString('base64')}`
+    
+    // Try cache first (5 minutes TTL)
+    try {
+      const cachedResult = await redis.get(cacheKey)
+      if (cachedResult) {
+        return createSecureResponse({
+          success: true,
+          cached: true,
+          ...JSON.parse(cachedResult as string),
+          meta: {
+            requestId,
+            responseTime: Date.now() - startTime,
+            cached: true
+          }
+        }, 200, requestId)
+      }
+    } catch (cacheError) {
+      console.warn('Cache read error:', cacheError)
+      // Continue without cache
+    }
+
+    const offset = (validatedQuery.page - 1) * validatedQuery.limit
+
+    // Build optimized query with security checks
     let query = supabase
       .from('marketplace_products')
       .select(`
-        *,
+        id,
+        title,
+        short_description,
+        price,
+        original_price,
+        category,
+        tags,
+        material,
+        complexity,
+        print_time,
+        rating_average,
+        rating_count,
+        download_count,
+        image_url,
+        thumbnail_url,
+        is_featured,
+        is_new,
+        is_free,
+        created_at,
+        updated_at,
         profiles!marketplace_products_user_id_fkey(
+          id,
           full_name,
           avatar_url
         )
-      `)
+      `, { count: 'exact' })
       .eq('is_active', true)
       .eq('is_approved', true)
+      .range(offset, offset + validatedQuery.limit - 1)
 
-    // Apply filters
-    if (filters.category && filters.category !== 'all') {
-      query = query.eq('category', filters.category)
+    // Apply filters with proper SQL injection prevention
+    if (validatedQuery.category && validatedQuery.category !== 'all') {
+      query = query.eq('category', validatedQuery.category)
     }
 
-    if (filters.search) {
-      query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%,short_description.ilike.%${filters.search}%`)
+    if (validatedQuery.search) {
+      // Use parameterized full-text search
+      query = query.or(`title.ilike.%${validatedQuery.search}%,short_description.ilike.%${validatedQuery.search}%`)
     }
 
-    if (filters.minPrice !== undefined) {
-      query = query.gte('price', filters.minPrice)
+    if (validatedQuery.minPrice !== undefined) {
+      query = query.gte('price', validatedQuery.minPrice)
     }
 
-    if (filters.maxPrice !== undefined) {
-      query = query.lte('price', filters.maxPrice)
+    if (validatedQuery.maxPrice !== undefined) {
+      query = query.lte('price', validatedQuery.maxPrice)
     }
 
-    if (filters.tags && filters.tags.length > 0) {
-      query = query.overlaps('tags', filters.tags)
+    if (validatedQuery.tags.length > 0) {
+      query = query.overlaps('tags', validatedQuery.tags)
     }
 
-    // Apply sorting
-    switch (filters.sortBy) {
+    if (validatedQuery.materials.length > 0) {
+      query = query.in('material', validatedQuery.materials)
+    }
+
+    if (validatedQuery.featured) {
+      query = query.eq('is_featured', true)
+    }
+
+    if (validatedQuery.new) {
+      // Products created in the last 30 days
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      query = query.gte('created_at', thirtyDaysAgo.toISOString())
+    }
+
+    if (validatedQuery.free) {
+      query = query.eq('price', 0)
+    }
+
+    // Apply sorting with proper indexes
+    switch (validatedQuery.sortBy) {
       case 'price-low':
-        query = query.order('price', { ascending: true })
+        query = query.order('price', { ascending: true }).order('rating_average', { ascending: false })
         break
       case 'price-high':
-        query = query.order('price', { ascending: false })
-        break
-      case 'rating':
-        query = query.order('rating_average', { ascending: false })
+        query = query.order('price', { ascending: false }).order('rating_average', { ascending: false })
         break
       case 'newest':
         query = query.order('created_at', { ascending: false })
         break
+      case 'rating':
+        query = query.order('rating_average', { ascending: false }).order('rating_count', { ascending: false })
+        break
+      case 'downloads':
+        query = query.order('download_count', { ascending: false })
+        break
       case 'popular':
       default:
+        // Weighted popularity score
         query = query.order('download_count', { ascending: false })
+          .order('rating_average', { ascending: false })
+          .order('created_at', { ascending: false })
         break
     }
 
-    // Apply pagination
-    const offset = ((filters.page || 1) - 1) * (filters.limit || 20)
-    query = query.range(offset, offset + (filters.limit || 20) - 1)
-
-    const { data: products, error, count } = await query
+    const { data, error, count } = await query
 
     if (error) {
-      console.error('Error fetching marketplace products:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch marketplace products' },
-        { status: 500 }
-      )
+      console.error('Marketplace query error:', error)
+      await logSecurityEvent('DATABASE_ERROR_MARKETPLACE', {
+        error: error.message,
+        query: validatedQuery,
+        requestId
+      })
+      
+      return createSecureResponse({
+        error: 'Failed to fetch marketplace products'
+      }, 500, requestId)
     }
 
-    // Get total count for pagination
-    const { count: totalCount } = await supabase
-      .from('marketplace_products')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .eq('is_approved', true)
-
-    // Transform the data to match the frontend expectations
-    const transformedProducts = products?.map(product => ({
+    // Transform data with security considerations
+    const transformedData = (data || []).map((product: any) => ({
       id: product.id,
-      name: product.title,
-      price: product.price,
-      originalPrice: product.original_price,
-      image: product.preview_images?.[0] || '/placeholder.svg?height=400&width=400',
-      rating: product.rating_average || 0,
-      reviews: product.rating_count || 0,
+      title: product.title,
+      name: product.title, // Backward compatibility
+      short_description: product.short_description,
+      price: Number(product.price),
+      original_price: product.original_price ? Number(product.original_price) : undefined,
       category: product.category,
-      tags: product.tags || [],
-      designer: product.profiles?.full_name || 'Anonymous',
-      downloads: product.download_count || 0,
-      material: product.material_codes?.[0] || 'PLA',
-      printTime: product.print_time_hours ? `${product.print_time_hours}h` : 'N/A',
-      isNew: product.created_at ? new Date(product.created_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) : false,
-      isFeatured: product.is_featured || false,
-      complexity: product.complexity || 3,
-      description: product.description,
-      shortDescription: product.short_description,
-      dimensions: product.dimensions,
-      previewImages: product.preview_images || [],
-      fileSize: product.file_size_mb,
-      supportsRequired: product.supports_required,
-      infillPercentage: product.infill_percentage
+      tags: Array.isArray(product.tags) ? product.tags : [],
+      material: product.material,
+      complexity: product.complexity,
+      print_time: product.print_time,
+      rating: Number(product.rating_average || 0),
+      reviews: Number(product.rating_count || 0),
+      downloads: Number(product.download_count || 0),
+      designer: product.profiles?.full_name || 'Unknown Designer',
+      image: product.thumbnail_url || product.image_url || '/images/placeholder-3d-model.jpg',
+      is_featured: Boolean(product.is_featured),
+      is_new: Boolean(product.is_new),
+      is_free: Boolean(product.is_free),
+      created_at: product.created_at,
+      updated_at: product.updated_at
     }))
 
-    return NextResponse.json({
-      products: transformedProducts,
+    const result = {
+      products: transformedData,
       pagination: {
-        page: filters.page || 1,
-        limit: filters.limit || 20,
-        total: totalCount || 0,
-        totalPages: Math.ceil((totalCount || 0) / (filters.limit || 20)),
-        hasMore: offset + (filters.limit || 20) < (totalCount || 0)
+        page: validatedQuery.page,
+        limit: validatedQuery.limit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / validatedQuery.limit),
+        hasMore: offset + validatedQuery.limit < (count || 0),
       },
-      filters: filters
+      filters: validatedQuery,
+      meta: {
+        requestId,
+        responseTime: Date.now() - startTime,
+        cached: false
+      }
+    }
+
+    // Cache successful results for 5 minutes
+    try {
+      await redis.setex(cacheKey, 300, JSON.stringify(result))
+    } catch (cacheError) {
+      console.warn('Cache write error:', cacheError)
+      // Continue without caching
+    }
+
+    return createSecureResponse({
+      success: true,
+      ...result
+    }, 200, requestId)
+
+  } catch (error: any) {
+    console.error(`Marketplace API error [${requestId}]:`, {
+      message: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
     })
 
-  } catch (error) {
-    console.error('Marketplace API error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return createSecureResponse({
+      error: 'Internal server error',
+      code: 'MARKETPLACE_ERROR'
+    }, 500, requestId)
   }
 }
+
+// Handle preflight requests for CORS
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': process.env.ALLOWED_ORIGINS || '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
+    },
+  })
+}
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'

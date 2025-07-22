@@ -1,15 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import { randomUUID } from 'crypto'
+import { createServerClient } from '@/lib/supabase/server'
+import { 
+  rateLimit, 
+  createSecureResponse,
+  logSecurityEvent,
+  createRateLimitResponse,
+  sanitizeInput
+} from '@/lib/middleware/api-middleware'
 
-// GET /api/cart - Get user's cart items
+const CartItemSchema = z.object({
+  quoteId: z.string().uuid(),
+  quantity: z.number().int().min(1).max(100).default(1)
+}).strict()
+
+async function verifyAuth(supabase: any) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  
+  if (authError || !user) {
+    throw new Error('Unauthorized')
+  }
+
+  return user
+}
+
 export async function GET(request: NextRequest) {
+  const requestId = randomUUID()
+  
   try {
-    const { supabase } = createClient(request)
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const rateLimitResult = await rateLimit('DEFAULT')(request)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult, requestId)
     }
+
+    const supabase = await createServerClient()
+    const user = await verifyAuth(supabase)
 
     const { data: cartItems, error } = await supabase
       .from('cart_items')
@@ -27,45 +53,58 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching cart:', error)
-      return NextResponse.json({ 
-        error: 'Failed to fetch cart items' 
-      }, { status: 500 })
+      throw new Error(`Database error: ${error.message}`)
     }
 
-    return NextResponse.json({
-      success: true,
-      cartItems: cartItems || []
+    await logSecurityEvent('cart_accessed', {
+      userId: user.id,
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown',
+      itemsCount: cartItems?.length || 0
     })
 
+    return createSecureResponse({
+      success: true,
+      data: { cartItems: cartItems || [] }
+    }, 200, requestId)
+
   } catch (error) {
-    console.error('Cart GET error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
+    await logSecurityEvent('cart_access_error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    })
+
+    if (error instanceof Error) {
+      if (error.message === 'Unauthorized') {
+        return createSecureResponse({ error: 'Unauthorized' }, 401, requestId)
+      }
+      if (error.message.startsWith('Database error:')) {
+        return createSecureResponse({ error: 'Database error occurred' }, 500, requestId)
+      }
+    }
+
+    return createSecureResponse({ error: 'Internal server error' }, 500, requestId)
   }
 }
 
-// POST /api/cart - Add item to cart
 export async function POST(request: NextRequest) {
+  const requestId = randomUUID()
+  
   try {
-    const { supabase } = createClient(request)
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const rateLimitResult = await rateLimit('DEFAULT')(request)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult, requestId)
     }
 
     const body = await request.json()
-    const { quoteId, quantity = 1 } = body
+    const sanitizedBody = sanitizeInput(body)
+    const validatedData = CartItemSchema.parse(sanitizedBody)
+    const { quoteId, quantity } = validatedData
 
-    if (!quoteId) {
-      return NextResponse.json({ 
-        error: 'Quote ID is required' 
-      }, { status: 400 })
-    }
+    const supabase = await createServerClient()
+    const user = await verifyAuth(supabase)
 
-    // Verify quote exists and belongs to user
     const { data: quote, error: quoteError } = await supabase
       .from('quotes')
       .select('*')
@@ -74,12 +113,9 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (quoteError || !quote) {
-      return NextResponse.json({ 
-        error: 'Quote not found' 
-      }, { status: 404 })
+      return createSecureResponse({ error: 'Quote not found' }, 404, requestId)
     }
 
-    // Check if item already in cart
     const { data: existingItem, error: existingError } = await supabase
       .from('cart_items')
       .select('*')
@@ -87,8 +123,8 @@ export async function POST(request: NextRequest) {
       .eq('quote_id', quoteId)
       .single()
 
+    let result
     if (existingItem) {
-      // Update quantity
       const { data: updatedItem, error: updateError } = await supabase
         .from('cart_items')
         .update({ quantity: existingItem.quantity + quantity })
@@ -97,100 +133,117 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (updateError) {
-        console.error('Error updating cart item:', updateError)
-        return NextResponse.json({ 
-          error: 'Failed to update cart item' 
-        }, { status: 500 })
+        throw new Error(`Database error: ${updateError.message}`)
       }
+      result = updatedItem
+    } else {
+      const { data: newItem, error: insertError } = await supabase
+        .from('cart_items')
+        .insert({
+          user_id: user.id,
+          quote_id: quoteId,
+          quantity
+        })
+        .select()
+        .single()
 
-      return NextResponse.json({
-        success: true,
-        cartItem: updatedItem
-      })
+      if (insertError) {
+        throw new Error(`Database error: ${insertError.message}`)
+      }
+      result = newItem
     }
 
-    // Add new item to cart
-    const { data: cartItem, error: insertError } = await supabase
-      .from('cart_items')
-      .insert({
-        user_id: user.id,
-        quote_id: quoteId,
-        quantity: quantity
-      })
-      .select()
-      .single()
-
-    if (insertError) {
-      console.error('Error adding to cart:', insertError)
-      return NextResponse.json({ 
-        error: 'Failed to add item to cart' 
-      }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      cartItem
+    await logSecurityEvent('cart_item_added', {
+      userId: user.id,
+      quoteId,
+      quantity,
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
     })
 
+    return createSecureResponse({
+      success: true,
+      data: { cartItem: result },
+      message: 'Item added to cart successfully'
+    }, 200, requestId)
+
   } catch (error) {
-    console.error('Cart POST error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
+    await logSecurityEvent('cart_add_error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    })
+
+    if (error instanceof Error) {
+      if (error.message === 'Unauthorized') {
+        return createSecureResponse({ error: 'Unauthorized' }, 401, requestId)
+      }
+      if (error.message.startsWith('Database error:')) {
+        return createSecureResponse({ error: 'Database error occurred' }, 500, requestId)
+      }
+    }
+
+    return createSecureResponse({ error: 'Internal server error' }, 500, requestId)
   }
 }
 
-// DELETE /api/cart - Clear cart or remove specific item
 export async function DELETE(request: NextRequest) {
+  const requestId = randomUUID()
+  
   try {
-    const { supabase } = createClient(request)
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const rateLimitResult = await rateLimit('DEFAULT')(request)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult, requestId)
     }
 
     const { searchParams } = new URL(request.url)
-    const itemId = searchParams.get('itemId')
+    const itemId = searchParams.get('id')
 
-    if (itemId) {
-      // Delete specific item
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('id', itemId)
-        .eq('user_id', user.id)
+    if (!itemId) {
+      return createSecureResponse({ error: 'Item ID is required' }, 400, requestId)
+    }
 
-      if (error) {
-        console.error('Error removing cart item:', error)
-        return NextResponse.json({ 
-          error: 'Failed to remove cart item' 
-        }, { status: 500 })
+    const supabase = await createServerClient()
+    const user = await verifyAuth(supabase)
+
+    const { error: deleteError } = await supabase
+      .from('cart_items')
+      .delete()
+      .eq('id', itemId)
+      .eq('user_id', user.id)
+
+    if (deleteError) {
+      throw new Error(`Database error: ${deleteError.message}`)
+    }
+
+    await logSecurityEvent('cart_item_removed', {
+      userId: user.id,
+      itemId,
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    })
+
+    return createSecureResponse({
+      success: true,
+      message: 'Item removed from cart successfully'
+    }, 200, requestId)
+
+  } catch (error) {
+    await logSecurityEvent('cart_remove_error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    })
+
+    if (error instanceof Error) {
+      if (error.message === 'Unauthorized') {
+        return createSecureResponse({ error: 'Unauthorized' }, 401, requestId)
       }
-    } else {
-      // Clear entire cart
-      const { error } = await supabase
-        .from('cart_items')
-        .delete()
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('Error clearing cart:', error)
-        return NextResponse.json({ 
-          error: 'Failed to clear cart' 
-        }, { status: 500 })
+      if (error.message.startsWith('Database error:')) {
+        return createSecureResponse({ error: 'Database error occurred' }, 500, requestId)
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      message: itemId ? 'Item removed from cart' : 'Cart cleared'
-    })
-
-  } catch (error) {
-    console.error('Cart DELETE error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
+    return createSecureResponse({ error: 'Internal server error' }, 500, requestId)
   }
 }

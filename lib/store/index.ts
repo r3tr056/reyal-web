@@ -7,8 +7,9 @@ import authSlice from './slices/authSlice'
 import cartSlice from './slices/cartSlice'
 import orderSlice from './slices/orderSlice'
 import marketplaceSlice from './slices/marketplaceSlice'
-import uiSlice from './slices/uiSlice'
 import uploadSlice from './slices/uploadSlice'
+import appConfigSlice from './slices/appConfigSlice'
+import settingsSlice from './slices/settingsSlice'
 
 // Create a noop storage for server-side rendering
 const createNoopStorage = () => {
@@ -25,24 +26,21 @@ const createNoopStorage = () => {
   }
 }
 
-// Use appropriate storage based on environment
-const persistStorage = typeof window !== 'undefined' 
-  ? createWebStorage('local') 
-  : createNoopStorage()
-
 const rootReducer = combineReducers({
   auth: authSlice,
   cart: cartSlice,
   orders: orderSlice,
   marketplace: marketplaceSlice,
-  ui: uiSlice,
   upload: uploadSlice,
+  appConfig: appConfigSlice,
+  settings: settingsSlice
 })
 
 const persistConfig = {
   key: 'root',
-  storage: persistStorage,
-  whitelist: ['auth', 'cart'], // Only persist auth and cart
+  storage,
+  whitelist: ['auth', 'upload', 'appConfig', 'cart', 'settings'],
+  blacklist: []
 }
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
