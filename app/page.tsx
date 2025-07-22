@@ -33,7 +33,7 @@ import { Slider } from "@/components/ui/slider"
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks"
 import { useUpload } from "@/lib/providers/UploadProvider"
 import { fetchAllAppConfig, selectActiveLocations, selectActivePrinters, selectAppConfigError, selectAppConfigInitialized, selectAppConfigLoading, selectAvailableColors, selectAvailableMaterials } from "@/lib/store/slices/appConfigSlice"
-import { analyzeFile, selectUploadProgress, setCurrentFiles, setDragActive, uploadFile, setShowUploadModal } from "@/lib/store/slices/uploadSlice"
+import { analyzeFile, selectUploadProgress, setCurrentFiles, setDragActive, uploadFile } from "@/lib/store/slices/uploadSlice"
 import { initializeDefaults, selectSettingsInitialized } from "@/lib/store/slices/settingsSlice"
 import { Material } from "@/lib/types"
 import { useHomepageEstimate } from '@/hooks/use-homepage-estimate'
@@ -629,7 +629,7 @@ export default function HomePage() {
             <Button
               size="lg"
               className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-2xl hover:shadow-emerald-500/40 transform hover:scale-105 transition-all duration-300 px-8 py-4 text-lg font-semibold"
-              onClick={() => setShowUploadModal(true)}
+              onClick={openUploadModal}
             >
               <Upload className="mr-3 h-5 w-5" />
               Start Your Project
@@ -680,7 +680,7 @@ export default function HomePage() {
               <ul className="space-y-3 text-gray-400">
                 <li>
                   <button 
-                    onClick={() => setShowUploadModal(true)}
+                    onClick={openUploadModal}
                     className="hover:text-emerald-400 transition-colors text-left"
                   >
                     Rapid Prototyping

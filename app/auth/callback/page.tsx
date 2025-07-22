@@ -28,7 +28,7 @@ export default function AuthCallbackPage() {
           return
         }
 
-        // Handle authorization code flow
+        // Handle authorization code flow first
         if (code) {
           const { data, error } = await supabase().auth.exchangeCodeForSession(code)
           
@@ -49,14 +49,17 @@ export default function AuthCallbackPage() {
           }
         }
 
-        // Handle implicit flow (tokens in hash)
+        // Handle implicit flow (tokens in hash) - this is the primary flow for OAuth providers
         if (typeof window !== 'undefined' && window.location.hash) {
           const hash = window.location.hash.substring(1)
           const params = new URLSearchParams(hash)
           
           const accessToken = params.get('access_token')
           const refreshToken = params.get('refresh_token')
+          const tokenType = params.get('token_type')
           const expiresIn = params.get('expires_in')
+          
+          console.log('Hash tokens found:', { accessToken: !!accessToken, refreshToken: !!refreshToken })
           
           if (accessToken) {
             const { data, error } = await supabase().auth.setSession({
@@ -71,8 +74,12 @@ export default function AuthCallbackPage() {
             }
 
             if (data.session) {
+              console.log('Session established successfully')
               // Initialize auth state
               await dispatch(initializeAuth())
+              
+              // Clear the hash from URL
+              window.history.replaceState(null, '', window.location.pathname)
               
               // Redirect to intended page or home
               const redirectTo = searchParams.get('redirect') || '/'
@@ -80,6 +87,16 @@ export default function AuthCallbackPage() {
               return
             }
           }
+        }
+
+        // Check if user is already authenticated (session from SSR)
+        const { data: { session } } = await supabase().auth.getSession()
+        if (session) {
+          console.log('Existing session found')
+          await dispatch(initializeAuth())
+          const redirectTo = searchParams.get('redirect') || '/'
+          router.push(redirectTo)
+          return
         }
 
         // No valid auth data found

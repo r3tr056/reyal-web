@@ -1,7 +1,6 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit'
 import { persistStore, persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
-import createWebStorage from 'redux-persist/lib/storage/createWebStorage'
 
 import authSlice from './slices/authSlice'
 import cartSlice from './slices/cartSlice'
@@ -26,6 +25,14 @@ const createNoopStorage = () => {
   }
 }
 
+// Use noop storage on server
+const createPersistStorage = () => {
+  if (typeof window === 'undefined') {
+    return createNoopStorage()
+  }
+  return storage
+}
+
 const rootReducer = combineReducers({
   auth: authSlice,
   cart: cartSlice,
@@ -38,9 +45,9 @@ const rootReducer = combineReducers({
 
 const persistConfig = {
   key: 'root',
-  storage,
-  whitelist: ['auth', 'upload', 'appConfig', 'cart', 'settings'],
-  blacklist: []
+  storage: createPersistStorage(),
+  whitelist: ['auth', 'cart', 'settings'],
+  blacklist: ['marketplace', 'upload', 'orders']
 }
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
@@ -50,8 +57,14 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
-        ignoredPaths: ['marketplace.likedProducts'],
+        ignoredActions: [
+          'persist/PERSIST', 
+          'persist/REHYDRATE',
+          'persist/PAUSE',
+          'persist/PURGE',
+          'persist/REGISTER'
+        ],
+        ignoredPaths: ['_persist'],
       },
     }),
   devTools: process.env.NODE_ENV !== 'production',
