@@ -60,10 +60,95 @@ const initialState: CartState = {
   appliedPromo: '',
 }
 
+// Mock cart data for offline development
+const MOCK_CART_ITEMS: CartItem[] = [
+  {
+    id: 'cart1',
+    user_id: 'user1',
+    quote_id: 'quote1',
+    quantity: 2,
+    created_at: '2024-01-20T10:00:00Z',
+    name: 'Architectural Model House',
+    price: 299,
+    image: '/api/placeholder/150/150?text=House+Model',
+    material: 'PLA',
+    color: 'White',
+    quality: 'Standard (0.2mm)',
+    printTime: '9.0h',
+    rating: 4.8,
+    reviews: 24,
+    designer: 'ArchViz Pro',
+    isFeatured: true,
+    isNew: false,
+    quote: {
+      id: 'quote1',
+      file_id: 'file1',
+      total_cost: 299,
+      settings: {
+        material: 'PLA',
+        quality: 'standard',
+        infill_percentage: 20,
+        layer_height: 0.2,
+        color: 'White'
+      },
+      files: {
+        original_filename: 'house_model.stl',
+        file_type: 'stl'
+      }
+    }
+  },
+  {
+    id: 'cart2',
+    user_id: 'user1',
+    quote_id: 'quote2',
+    quantity: 1,
+    created_at: '2024-01-19T15:30:00Z',
+    name: 'Smartphone Stand Adjustable',
+    price: 79,
+    image: '/api/placeholder/150/150?text=Phone+Stand',
+    material: 'PETG',
+    color: 'Black',
+    quality: 'Draft (0.3mm)',
+    printTime: '1.5h',
+    rating: 4.4,
+    reviews: 67,
+    designer: 'UtilityPrints',
+    isFeatured: false,
+    isNew: false,
+    quote: {
+      id: 'quote2',
+      file_id: 'file2',
+      total_cost: 79,
+      settings: {
+        material: 'PETG',
+        quality: 'draft',
+        infill_percentage: 15,
+        layer_height: 0.3,
+        color: 'Black'
+      },
+      files: {
+        original_filename: 'phone_stand.stl',
+        file_type: 'stl'
+      }
+    }
+  }
+]
+
 export const fetchCartItems = createAsyncThunk(
   'cart/fetchItems',
   async (_, { rejectWithValue }) => {
     try {
+      // Use mock data for offline development
+      const useMockData = !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      if (useMockData) {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 300))
+        // Return mock data if user would be authenticated
+        return MOCK_CART_ITEMS
+      }
+      
+      // Original Supabase implementation
       const { data: { user } } = await supabase().auth.getUser()
       
       if (!user) {
@@ -100,8 +185,56 @@ export const fetchCartItems = createAsyncThunk(
 
 export const addToCart = createAsyncThunk(
   'cart/addItem',
-  async ({ quoteId, quantity = 1 }: { quoteId: string; quantity?: number }, { rejectWithValue }) => {
+  async ({ quoteId, quantity = 1 }: { quoteId: string; quantity?: number }, { rejectWithValue, getState }) => {
     try {
+      // Use mock data for offline development
+      const useMockData = !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      if (useMockData) {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 400))
+        
+        // Create a mock cart item
+        const mockItem: CartItem = {
+          id: `cart_${Date.now()}`,
+          user_id: 'mock_user',
+          quote_id: quoteId,
+          quantity,
+          created_at: new Date().toISOString(),
+          name: `Product for Quote ${quoteId}`,
+          price: 199,
+          image: '/api/placeholder/150/150?text=New+Item',
+          material: 'PLA',
+          color: 'White',
+          quality: 'Standard (0.2mm)',
+          printTime: '3.0h',
+          rating: 4.5,
+          reviews: 10,
+          designer: 'Mock Designer',
+          isFeatured: false,
+          isNew: true,
+          quote: {
+            id: quoteId,
+            file_id: `file_${quoteId}`,
+            total_cost: 199,
+            settings: {
+              material: 'PLA',
+              quality: 'standard',
+              infill_percentage: 20,
+              layer_height: 0.2,
+              color: 'White'
+            },
+            files: {
+              original_filename: 'mock_model.stl',
+              file_type: 'stl'
+            }
+          }
+        }
+        
+        return mockItem
+      }
+      
+      // Original Supabase implementation
       const { data: { user } } = await supabase().auth.getUser()
       
       if (!user) {
