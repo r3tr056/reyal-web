@@ -1,9 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
-import { Database } from '@/lib/types/database'
+import { AdminAuthProvider } from '@/components/admin/AdminAuthProvider'
 import { Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { 
@@ -15,61 +12,32 @@ import {
   BarChart3, 
   LogOut, 
   Printer,
-  Download
+  Download,
+  Shield
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
+import { useAdminAuth } from '@/components/admin/AdminAuthProvider'
 
 interface AdminLayoutProps {
   children: React.ReactNode
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+function AdminLayoutContent({ children }: AdminLayoutProps) {
   const pathname = usePathname()
-  const supabaseClient = supabase()
-
-  useEffect(() => {
-    checkUser()
-  }, [])
-
-  const checkUser = async () => {
-    try {
-      const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
-      
-      if (authError || !user) {
-        router.push('/admin/login')
-        return
-      }
-
-      const { data: profile } = await supabaseClient
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (!profile || profile.role !== 'admin') {
-        router.push('/admin/login?error=unauthorized')
-        return
-      }
-
-      setUser(user)
-      setProfile(profile)
-    } catch (error) {
-      console.error('Auth check failed:', error)
-      router.push('/admin/login')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const router = useRouter()
+  const { user } = useAdminAuth()
 
   const handleLogout = async () => {
-    await supabaseClient.auth.signOut()
-    router.push('/admin/login')
+    try {
+      await supabase().auth.signOut()
+      router.push('/admin/login')
+    } catch (error) {
+      console.error('Logout error:', error)
+      router.push('/admin/login')
+    }
   }
 
   const navigationItems = [
@@ -115,30 +83,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
   ]
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  if (!user || !profile) {
-    return null
-  }
-
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50">
-        <Sidebar className="border-r">
-          <SidebarHeader className="border-b p-4">
+      <div className="min-h-screen flex w-full bg-gray-950">
+        <Sidebar className="border-r border-gray-800 bg-gray-900">
+          <SidebarHeader className="border-b border-gray-800 p-4">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 bg-primary rounded flex items-center justify-center">
-                <Printer className="h-4 w-4 text-primary-foreground" />
+              <div className="h-8 w-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded flex items-center justify-center">
+                <Shield className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h2 className="font-semibold text-lg">3D Print Admin</h2>
-                <p className="text-xs text-muted-foreground">Management Panel</p>
+                <h2 className="font-semibold text-lg text-white">REYAL Admin</h2>
+                <p className="text-xs text-gray-400">Secure Management Panel</p>
               </div>
             </div>
           </SidebarHeader>
@@ -154,8 +110,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     <SidebarMenuButton 
                       asChild 
                       className={cn(
-                        'w-full',
-                        isActive && 'bg-primary text-primary-foreground'
+                        'w-full text-gray-300 hover:text-white hover:bg-gray-800 transition-colors',
+                        isActive && 'bg-emerald-600 text-white hover:bg-emerald-700'
                       )}
                     >
                       <Link href={item.href} className="flex items-center gap-2">
@@ -169,23 +125,25 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </SidebarMenu>
           </SidebarContent>
 
-          <div className="mt-auto p-4 border-t">
+          <div className="mt-auto p-4 border-t border-gray-800">
             <div className="flex items-center gap-2 mb-3">
-              <div className="h-8 w-8 bg-muted rounded-full flex items-center justify-center">
-                <span className="text-xs font-medium">
-                  {profile.email?.charAt(0).toUpperCase()}
+              <div className="h-8 w-8 bg-emerald-600 rounded-full flex items-center justify-center">
+                <span className="text-xs font-medium text-white">
+                  {user?.email?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="text-sm">
-                <p className="font-medium">{profile.full_name || 'Admin'}</p>
-                <p className="text-xs text-muted-foreground">{profile.email}</p>
+                <p className="font-medium text-white">
+                  {user?.user_metadata?.full_name || 'Admin'}
+                </p>
+                <p className="text-xs text-gray-400">{user?.email}</p>
               </div>
             </div>
             <Button 
               variant="outline" 
               size="sm" 
               onClick={handleLogout}
-              className="w-full"
+              className="w-full bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white"
             >
               <LogOut className="h-4 w-4 mr-2" />
               Logout
@@ -194,25 +152,35 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
-          <header className="bg-white border-b p-4">
+          <header className="bg-gray-900 border-b border-gray-800 p-4">
             <div className="flex items-center gap-4">
-              <SidebarTrigger />
+              <SidebarTrigger className="text-gray-300 hover:text-white" />
               <div>
-                <h1 className="text-xl font-semibold">
+                <h1 className="text-xl font-semibold text-white">
                   Admin Dashboard
                 </h1>
-                <p className="text-sm text-muted-foreground">
-                  Manage your 3D printing business
+                <p className="text-sm text-gray-400">
+                  Secure management for REYAL 3D printing platform
                 </p>
               </div>
             </div>
           </header>
           
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-6 bg-gray-950">
             {children}
           </div>
         </main>
       </div>
     </SidebarProvider>
+  )
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
+  return (
+    <AdminAuthProvider>
+      <AdminLayoutContent>
+        {children}
+      </AdminLayoutContent>
+    </AdminAuthProvider>
   )
 }

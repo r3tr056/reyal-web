@@ -1,117 +1,119 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { FileAnalysis } from '@/lib/types'
-import { readFile } from 'fs/promises'
+import { z } from 'zod'
+import { createServerClient } from '@/lib/supabase/server'
+import { 
+  rateLimit, 
+  validateUUID,
+  createSecureResponse,
+  logSecurityEvent
+} from '@/lib/middleware/api-middleware'
+import { API_CONFIG } from '@/lib/config/api'
+import { randomUUID } from 'crypto'
 
-export async function POST(
+export async function GET(
   request: NextRequest,
   { params }: { params: { fileId: string } }
 ) {
+  const requestId = randomUUID()
+  
   try {
-    const { supabase } = createClient(request)
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const rateLimitResult = await rateLimit('DEFAULT')(request)
+    if (!rateLimitResult.success) {
+      await logSecurityEvent('RATE_LIMIT_EXCEEDED', {
+        endpoint: '/api/analyze/[fileId]',
+        method: 'GET',
+        requestId
+      })
+      return NextResponse.json(
+        { 
+          error: 'Rate limit exceeded',
+          retryAfter: rateLimitResult.retryAfter
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
+            'X-RateLimit-Limit': rateLimitResult.limit?.toString() || '100',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime?.toString() || '0'
+          }
+        }
+      )
     }
 
-    const { fileId } = params
+    const userId = request.headers.get('x-user-id')
+    if (!userId) {
+      await logSecurityEvent('UNAUTHORIZED_ACCESS', {
+        endpoint: '/api/analyze/[fileId]',
+        requestId
+      })
+      return createSecureResponse(
+        { error: 'Authentication required' },
+        401,
+        requestId
+      )
+    }
 
-    // Get file record from database
-    const { data: fileRecord, error: fileError } = await supabase
+    if (!validateUUID(params.fileId)) {
+      return createSecureResponse(
+        { error: 'Invalid file ID format' },
+        400,
+        requestId
+      )
+    }
+
+    const supabase = await createServerClient()
+    
+    const { data: file, error } = await supabase
       .from('files')
-      .select('*')
-      .eq('id', fileId)
-      .eq('user_id', user.id)
+      .select('id, original_filename, is_analyzed, analysis, created_at')
+      .eq('id', params.fileId)
+      .eq('user_id', userId)
       .single()
 
-    if (fileError || !fileRecord) {
-      return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    if (error || !file) {
+      await logSecurityEvent('RESOURCE_NOT_FOUND', {
+        endpoint: '/api/analyze/[fileId]',
+        fileId: params.fileId,
+        userId,
+        requestId
+      })
+      return createSecureResponse(
+        { error: 'File not found or access denied' },
+        404,
+        requestId
+      )
     }
 
-    if (fileRecord.is_analyzed && fileRecord.analysis) {
-      return NextResponse.json({
+    return createSecureResponse(
+      {
         success: true,
-        analysis: fileRecord.analysis
-      })
-    }
-
-    // Mock 3D file analysis (in production, you would use actual 3D processing libraries)
-    const analysis = await generateMockAnalysis(fileRecord.file_path, fileRecord.file_size, fileRecord.file_type)
-
-    // Update file record with analysis
-    const { error: updateError } = await supabase
-      .from('files')
-      .update({
-        analysis: analysis,
-        is_analyzed: true
-      })
-      .eq('id', fileId)
-
-    if (updateError) {
-      console.error('Failed to save analysis:', updateError)
-      return NextResponse.json({ 
-        error: 'Failed to save analysis results' 
-      }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      analysis
-    })
+        data: {
+          fileId: file.id,
+          filename: file.original_filename,
+          isAnalyzed: file.is_analyzed,
+          analysis: file.analysis,
+          uploadedAt: file.created_at,
+          status: file.is_analyzed 
+            ? (file.analysis?.error ? 'failed' : 'completed')
+            : 'processing'
+        }
+      },
+      200,
+      requestId
+    )
 
   } catch (error) {
-    console.error('Analysis error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
-  }
-}
-
-// Mock analysis function - in production, replace with actual 3D processing
-async function generateMockAnalysis(filePath: string, fileSize: number, fileType: string): Promise<FileAnalysis> {
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // Generate realistic mock data based on file size and type
-  const sizeMultiplier = Math.sqrt(fileSize / (1024 * 1024)) // Scale with file size
-  
-  const dimensions = {
-    x: Math.round((20 + Math.random() * 80) * sizeMultiplier * 10) / 10,
-    y: Math.round((20 + Math.random() * 80) * sizeMultiplier * 10) / 10,
-    z: Math.round((10 + Math.random() * 40) * sizeMultiplier * 10) / 10
-  }
-  
-  const volume = Math.round(dimensions.x * dimensions.y * dimensions.z * 0.3 * 100) / 100 // ~30% fill
-  const surfaceArea = Math.round(2 * (dimensions.x * dimensions.y + dimensions.y * dimensions.z + dimensions.x * dimensions.z) * 100) / 100
-  
-  const triangleCount = Math.round(fileSize / 50 + Math.random() * 10000)
-  const vertexCount = Math.round(triangleCount * 0.6)
-  
-  // Complexity based on triangle count and features
-  let complexity = 1
-  if (triangleCount > 100000) complexity = 5
-  else if (triangleCount > 50000) complexity = 4
-  else if (triangleCount > 20000) complexity = 3
-  else if (triangleCount > 5000) complexity = 2
-  
-  const supportRequired = dimensions.z > dimensions.x || dimensions.z > dimensions.y || Math.random() > 0.6
-  
-  // Print time estimation (hours)
-  const printTime = Math.round((volume * 0.5 + surfaceArea * 0.02 + (supportRequired ? volume * 0.2 : 0)) * 60) // in minutes
-  
-  return {
-    volume,
-    surfaceArea,
-    dimensions,
-    complexity,
-    supportRequired,
-    printTime,
-    triangleCount,
-    vertexCount,
-    boundingBox: {
-      min: { x: 0, y: 0, z: 0 },
-      max: dimensions
-    }
+    await logSecurityEvent('INTERNAL_ERROR', {
+      endpoint: '/api/analyze/[fileId]',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      requestId
+    })
+    
+    return createSecureResponse(
+      { error: 'Internal server error' },
+      500,
+      requestId
+    )
   }
 }

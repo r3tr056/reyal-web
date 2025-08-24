@@ -100,15 +100,15 @@ export default function OrdersPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
-        return "bg-green-100 text-green-800"
+        return "bg-green-500/20 text-green-400 border-green-500/30"
       case "shipped":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
       case "processing":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-red-500/20 text-red-400 border-red-500/30"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
   }
 
@@ -137,12 +137,22 @@ export default function OrdersPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <Card className="w-96">
+      <div className="min-h-screen bg-gray-950 relative overflow-hidden flex items-center justify-center">
+        {/* Animated Background */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black"></div>
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        </div>
+        
+        <Card className="w-96 bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl relative z-10">
           <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Please Sign In</h2>
-            <p className="text-gray-600 mb-6">You need to be logged in to view your orders.</p>
-            <Button asChild>
+            <h2 className="text-2xl font-bold mb-4 text-white">Please Sign In</h2>
+            <p className="text-gray-400 mb-6">You need to be logged in to view your orders.</p>
+            <Button 
+              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white"
+              asChild
+            >
               <Link href="/login">Sign In</Link>
             </Button>
           </CardContent>
@@ -152,23 +162,45 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-8 pt-24">
+    <div className="min-h-screen bg-gray-950 relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-950 to-black"></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[1200px] bg-gradient-conic from-emerald-500/5 via-transparent to-green-500/5 rounded-full blur-3xl animate-spin" style={{ animationDuration: '30s' }}></div>
+      </div>
+
+      {/* Grid Pattern Overlay */}
+      <div 
+        className="absolute inset-0 opacity-[0.02]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%2310b981' fillOpacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+
+      <div className="container mx-auto px-4 py-8 pt-24 relative z-10">
         <div className="mb-8">
-          <Button variant="ghost" size="sm" className="mb-4" asChild>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="mb-4 text-gray-400 hover:text-white hover:bg-gray-800/50" 
+            asChild
+          >
             <Link href="/">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Home
             </Link>
           </Button>
-          <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            My Orders
+          <h1 className="text-5xl font-bold mb-4 text-white leading-tight">
+            My 
+            <span className="bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent"> Orders</span>
           </h1>
-          <p className="text-gray-600">Track and manage your 3D printing orders</p>
+          <p className="text-gray-400 text-xl">Track and manage your 3D printing orders</p>
         </div>
 
         {/* Filters */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl mb-8">
+        <Card className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl mb-8">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4 items-center">
               <div className="flex-1 relative">
@@ -177,20 +209,20 @@ export default function OrdersPage() {
                   placeholder="Search orders by ID or product name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-gray-700/30 border-gray-600/50 text-gray-300 placeholder:text-gray-500 hover:border-emerald-500/50 focus:border-emerald-500"
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48 bg-gray-700/30 border-gray-600/50 text-gray-300 hover:border-emerald-500/50">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Orders</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="shipped">Shipped</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectContent className="bg-gray-800/95 backdrop-blur-xl border-gray-700/50">
+                  <SelectItem value="all" className="text-gray-300 hover:bg-gray-700/50 focus:bg-gray-700/50">All Orders</SelectItem>
+                  <SelectItem value="processing" className="text-gray-300 hover:bg-gray-700/50 focus:bg-gray-700/50">Processing</SelectItem>
+                  <SelectItem value="shipped" className="text-gray-300 hover:bg-gray-700/50 focus:bg-gray-700/50">Shipped</SelectItem>
+                  <SelectItem value="delivered" className="text-gray-300 hover:bg-gray-700/50 focus:bg-gray-700/50">Delivered</SelectItem>
+                  <SelectItem value="cancelled" className="text-gray-300 hover:bg-gray-700/50 focus:bg-gray-700/50">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -202,26 +234,31 @@ export default function OrdersPage() {
           {filteredOrders.map((order) => (
             <Card
               key={order.id}
-              className="bg-white/80 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300"
+              className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl hover:shadow-emerald-500/10 transition-all duration-500 hover:border-emerald-500/30"
             >
               <CardContent className="p-6">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4">
                   <div className="flex items-center space-x-4 mb-4 lg:mb-0">
                     <div>
-                      <h3 className="text-lg font-bold">{order.id}</h3>
-                      <div className="flex items-center text-sm text-gray-600 mt-1">
+                      <h3 className="text-lg font-bold text-white">{order.id}</h3>
+                      <div className="flex items-center text-sm text-gray-400 mt-1">
                         <Calendar className="h-4 w-4 mr-1" />
                         {new Date(order.date).toLocaleDateString()}
                       </div>
                     </div>
-                    <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1`}>
+                    <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1 border`}>
                       {getStatusIcon(order.status)}
                       <span className="capitalize">{order.status}</span>
                     </Badge>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <span className="text-2xl font-bold text-purple-600">₹{order.total}</span>
-                    <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
+                    <span className="text-2xl font-bold text-emerald-400">₹{order.total}</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSelectedOrder(order)}
+                      className="border-gray-600/50 text-gray-300 hover:bg-emerald-500/10 hover:border-emerald-500/50 hover:text-emerald-400"
+                    >
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </Button>
@@ -230,35 +267,35 @@ export default function OrdersPage() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="font-semibold mb-2">Items ({order.items.length})</h4>
+                    <h4 className="font-semibold mb-2 text-white">Items ({order.items.length})</h4>
                     <div className="space-y-2">
                       {order.items.map((item, index) => (
                         <div key={index} className="flex justify-between items-center text-sm">
-                          <span>
+                          <span className="text-gray-300">
                             {item.name} × {item.quantity}
                           </span>
-                          <span className="font-medium">₹{item.price * item.quantity}</span>
+                          <span className="font-medium text-emerald-400">₹{item.price * item.quantity}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-semibold mb-2">Delivery Info</h4>
+                    <h4 className="font-semibold mb-2 text-white">Delivery Info</h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-start">
                         <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-400" />
-                        <span className="text-gray-600">{order.shippingAddress}</span>
+                        <span className="text-gray-300">{order.shippingAddress}</span>
                       </div>
                       {order.trackingNumber && (
                         <div className="flex items-center">
                           <Truck className="h-4 w-4 mr-2 text-gray-400" />
-                          <span className="text-gray-600">Tracking: {order.trackingNumber}</span>
+                          <span className="text-gray-300">Tracking: {order.trackingNumber}</span>
                         </div>
                       )}
                       {order.estimatedDelivery && (
                         <div className="flex items-center">
                           <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                          <span className="text-gray-600">
+                          <span className="text-gray-300">
                             {order.status === "delivered" ? "Delivered" : "Expected"}:{" "}
                             {new Date(order.actualDelivery || order.estimatedDelivery).toLocaleDateString()}
                           </span>
@@ -268,16 +305,25 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-700/30">
                   <div className="flex space-x-3">
                     {order.status === "delivered" && (
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-gray-600/50 text-gray-300 hover:bg-emerald-500/10 hover:border-emerald-500/50 hover:text-emerald-400"
+                      >
                         <Download className="h-4 w-4 mr-2" />
                         Download Invoice
                       </Button>
                     )}
                     {order.trackingNumber && (
-                      <Button variant="outline" size="sm" asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="border-gray-600/50 text-gray-300 hover:bg-emerald-500/10 hover:border-emerald-500/50 hover:text-emerald-400"
+                        asChild
+                      >
                         <Link href={`/track/${order.id}`}>
                           <Truck className="h-4 w-4 mr-2" />
                           Track Package
@@ -288,7 +334,7 @@ export default function OrdersPage() {
                   {order.status === "delivered" && (
                     <Button
                       size="sm"
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                      className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white"
                     >
                       Reorder
                     </Button>
@@ -300,16 +346,19 @@ export default function OrdersPage() {
         </div>
 
         {filteredOrders.length === 0 && (
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+          <Card className="bg-gray-800/40 backdrop-blur-xl border border-gray-700/50 shadow-2xl">
             <CardContent className="p-12 text-center">
               <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-900 mb-2">No Orders Found</h3>
-              <p className="text-gray-600 mb-6">
+              <h3 className="text-xl font-bold text-white mb-2">No Orders Found</h3>
+              <p className="text-gray-400 mb-6">
                 {searchTerm || statusFilter !== "all"
                   ? "No orders match your current filters."
                   : "You haven't placed any orders yet."}
               </p>
-              <Button asChild>
+              <Button 
+                className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white"
+                asChild
+              >
                 <Link href="/marketplace">Start Shopping</Link>
               </Button>
             </CardContent>

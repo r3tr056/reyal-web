@@ -1,8 +1,21 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
+import { 
+  rateLimit, 
+  createSecureResponse,
+  logSecurityEvent,
+  createRateLimitResponse
+} from '@/lib/middleware/api-middleware'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const requestId = randomUUID()
+  
   try {
-    // Basic health check - can be extended to check database connectivity, etc.
+    const rateLimitResult = await rateLimit('DEFAULT')(request)
+    if (!rateLimitResult.success) {
+      return createRateLimitResponse(rateLimitResult, requestId)
+    }
+
     const health = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -11,15 +24,21 @@ export async function GET() {
       version: process.env.npm_package_version || '1.0.0'
     }
 
-    return NextResponse.json(health, { status: 200 })
+    return createSecureResponse({
+      success: true,
+      data: health
+    }, 200, requestId)
+
   } catch (error) {
-    return NextResponse.json(
-      { 
-        status: 'unhealthy', 
-        error: 'Health check failed',
-        timestamp: new Date().toISOString()
-      }, 
-      { status: 503 }
-    )
+    await logSecurityEvent('health_check_error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      ip: request.headers.get('x-forwarded-for') || 'unknown',
+      userAgent: request.headers.get('user-agent') || 'unknown'
+    })
+
+    return createSecureResponse({ 
+      error: 'Health check failed',
+      timestamp: new Date().toISOString()
+    }, 503, requestId)
   }
 }

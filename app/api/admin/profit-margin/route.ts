@@ -1,33 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+import { createServerClient } from '@/lib/supabase/server'
+import { 
+  rateLimit, 
+  createSecureResponse,
+  logSecurityEvent
+} from '@/lib/middleware/api-middleware'
+import { API_CONFIG } from '@/lib/config/api'
+import { randomUUID } from 'crypto'
+
+const ProfitMarginSchema = z.object({
+  profitMargin: z.number().min(0).max(1)
+}).strict()
+
+async function verifyAdminAccess(supabase: any) {
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  
+  if (authError || !user) {
+    throw new Error('Unauthorized')
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+
+  if (profileError || !profile?.is_admin) {
+    throw new Error('Admin access required')
+  }
+
+  return { user, profile }
+}
 
 export async function POST(request: NextRequest) {
+  const requestId = randomUUID()
+  
   try {
-    const { supabase } = createClient(request)
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const rateLimitResult = await rateLimit('ADMIN')(request)
+    if (!rateLimitResult.success) {
+      await logSecurityEvent('RATE_LIMIT_EXCEEDED', {
+        endpoint: '/api/admin/profit-margin',
+        method: 'POST',
+        requestId
+      })
+      return NextResponse.json(
+        { 
+          error: 'Rate limit exceeded',
+          retryAfter: rateLimitResult.retryAfter
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
+            'X-RateLimit-Limit': rateLimitResult.limit?.toString() || '200',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime?.toString() || '0'
+          }
+        }
+      )
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    const supabase = await createServerClient()
+    
+    let user
+    try {
+      const adminCheck = await verifyAdminAccess(supabase)
+      user = adminCheck.user
+    } catch (error) {
+      await logSecurityEvent('UNAUTHORIZED_ADMIN_ACCESS', {
+        endpoint: '/api/admin/profit-margin',
+        requestId
+      })
+      return createSecureResponse(
+        { error: 'Admin access required' },
+        403,
+        requestId
+      )
     }
 
     const body = await request.json()
-    const { profitMargin } = body
-
-    if (typeof profitMargin !== 'number' || profitMargin < 0 || profitMargin > 1) {
-      return NextResponse.json({ 
-        error: 'Profit margin must be a number between 0 and 1 (0% to 100%)' 
-      }, { status: 400 })
+    const validation = ProfitMarginSchema.safeParse(body)
+    if (!validation.success) {
+      return createSecureResponse(
+        { 
+          error: 'Invalid request data',
+          details: validation.error.errors
+        },
+        400,
+        requestId
+      )
     }
+
+    const { profitMargin } = validation.data
 
     const { error: updateError } = await supabase
       .from('business_settings')
@@ -39,29 +104,72 @@ export async function POST(request: NextRequest) {
       })
 
     if (updateError) {
-      return NextResponse.json({ 
-        error: 'Failed to update profit margin', 
-        details: updateError.message 
-      }, { status: 500 })
+      await logSecurityEvent('DATABASE_ERROR', {
+        endpoint: '/api/admin/profit-margin',
+        error: updateError.message,
+        requestId
+      })
+      return createSecureResponse(
+        { error: 'Failed to update profit margin' },
+        500,
+        requestId
+      )
     }
 
-    return NextResponse.json({
-      success: true,
-      profitMargin,
-      message: `Profit margin updated to ${(profitMargin * 100).toFixed(1)}%`
-    })
+    return createSecureResponse(
+      {
+        success: true,
+        profitMargin,
+        message: `Profit margin updated to ${(profitMargin * 100).toFixed(1)}%`
+      },
+      200,
+      requestId
+    )
 
   } catch (error) {
-    console.error('Profit margin update error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
+    await logSecurityEvent('INTERNAL_ERROR', {
+      endpoint: '/api/admin/profit-margin',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      requestId
+    })
+    
+    return createSecureResponse(
+      { error: 'Internal server error' },
+      500,
+      requestId
+    )
   }
 }
 
 export async function GET(request: NextRequest) {
+  const requestId = randomUUID()
+  
   try {
-    const { supabase } = createClient(request)
+    const rateLimitResult = await rateLimit('DEFAULT')(request)
+    if (!rateLimitResult.success) {
+      await logSecurityEvent('RATE_LIMIT_EXCEEDED', {
+        endpoint: '/api/admin/profit-margin',
+        method: 'GET',
+        requestId
+      })
+      return NextResponse.json(
+        { 
+          error: 'Rate limit exceeded',
+          retryAfter: rateLimitResult.retryAfter
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': rateLimitResult.retryAfter?.toString() || '60',
+            'X-RateLimit-Limit': rateLimitResult.limit?.toString() || '100',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime?.toString() || '0'
+          }
+        }
+      )
+    }
+
+    const supabase = await createServerClient()
     
     const { data: setting } = await supabase
       .from('business_settings')
@@ -71,16 +179,27 @@ export async function GET(request: NextRequest) {
 
     const profitMargin = setting?.value || 0.35
 
-    return NextResponse.json({
-      success: true,
-      profitMargin,
-      percentage: `${(profitMargin * 100).toFixed(1)}%`
-    })
+    return createSecureResponse(
+      {
+        success: true,
+        profitMargin,
+        percentage: `${(profitMargin * 100).toFixed(1)}%`
+      },
+      200,
+      requestId
+    )
 
   } catch (error) {
-    console.error('Profit margin fetch error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
+    await logSecurityEvent('INTERNAL_ERROR', {
+      endpoint: '/api/admin/profit-margin',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      requestId
+    })
+    
+    return createSecureResponse(
+      { error: 'Internal server error' },
+      500,
+      requestId
+    )
   }
 }

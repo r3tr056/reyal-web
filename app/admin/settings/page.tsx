@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { 
   Settings, 
   DollarSign, 
@@ -18,77 +20,126 @@ import {
   Save,
   RefreshCw,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  AlertTriangle
 } from 'lucide-react'
 
 interface BusinessSettings {
   profitMargin: number
-  taxRate: number
-  currency: string
-  defaultPrintSpeed: string
-  autoQuoteApproval: boolean
-  maxFileSize: number
-  supportedFormats: string[]
-  businessHours: string
-  contactEmail: string
+}
+
+interface Material {
+  id: string
+  name: string
+  type: string
+  color: string
+  price_per_gram: number
+  density: number
+  available: boolean
+  properties: any
+}
+
+interface PrinterData {
+  id: string
+  name: string
+  model: string
+  max_dimensions: any
+  layer_heights: number[]
+  supported_materials: string[]
+  is_active: boolean
+  hourly_rate: number
+  setup_cost: number
 }
 
 export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState<BusinessSettings>({
-    profitMargin: 0.35,
-    taxRate: 0.08,
-    currency: 'USD',
-    defaultPrintSpeed: 'standard',
-    autoQuoteApproval: false,
-    maxFileSize: 100,
-    supportedFormats: ['stl', 'obj', '3mf', 'ply'],
-    businessHours: '9:00 AM - 6:00 PM',
-    contactEmail: ''
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({
+    profitMargin: 0.35
   })
   
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [printers, setPrinters] = useState<PrinterData[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [loadingMaterials, setLoadingMaterials] = useState(false)
+  const [loadingPrinters, setLoadingPrinters] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   useEffect(() => {
-    loadSettings()
+    loadAllSettings()
   }, [])
 
-  const loadSettings = async () => {
+  const loadAllSettings = async () => {
+    await Promise.all([
+      loadBusinessSettings(),
+      loadMaterials(),
+      loadPrinters()
+    ])
+    setLoading(false)
+  }
+
+  const loadBusinessSettings = async () => {
     try {
-      // Load profit margin
       const response = await fetch('/api/admin/profit-margin')
       const data = await response.json()
       
       if (data.success) {
-        setSettings(prev => ({
+        setBusinessSettings(prev => ({
           ...prev,
           profitMargin: data.profitMargin
         }))
       }
     } catch (error) {
-      console.error('Failed to load settings:', error)
-    } finally {
-      setLoading(false)
+      console.error('Failed to load business settings:', error)
     }
   }
 
-  const saveSettings = async () => {
+  const loadMaterials = async () => {
+    setLoadingMaterials(true)
+    try {
+      const response = await fetch('/api/materials')
+      const data = await response.json()
+      
+      if (data.success) {
+        setMaterials(data.materials || [])
+      }
+    } catch (error) {
+      console.error('Failed to load materials:', error)
+    } finally {
+      setLoadingMaterials(false)
+    }
+  }
+
+  const loadPrinters = async () => {
+    setLoadingPrinters(true)
+    try {
+      const response = await fetch('/api/printers')
+      const data = await response.json()
+      
+      if (data.success) {
+        setPrinters(data.data || [])
+      }
+    } catch (error) {
+      console.error('Failed to load printers:', error)
+    } finally {
+      setLoadingPrinters(false)
+    }
+  }
+
+  const saveBusinessSettings = async () => {
     setSaving(true)
     setMessage(null)
     
     try {
-      // Save profit margin
       const response = await fetch('/api/admin/profit-margin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profitMargin: settings.profitMargin })
+        body: JSON.stringify({ profitMargin: businessSettings.profitMargin })
       })
 
       const data = await response.json()
       
       if (data.success) {
-        setMessage({ type: 'success', text: 'Settings saved successfully!' })
+        setMessage({ type: 'success', text: data.message || 'Settings saved successfully!' })
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to save settings' })
       }
@@ -100,336 +151,311 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
+
+  const formatPercentage = (value: number) => {
+    return `${(value * 100).toFixed(1)}%`
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-32 bg-gray-200 rounded"></div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Settings</h1>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <RefreshCw className="h-8 w-8 animate-spin" />
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
-          <p className="text-muted-foreground">
-            Configure your 3D printing business settings
-          </p>
-        </div>
-        <Button onClick={saveSettings} disabled={saving}>
-          {saving ? (
-            <>
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </>
-          )}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Settings</h1>
+        <Button onClick={loadAllSettings} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
         </Button>
       </div>
 
       {message && (
-        <Alert className={message.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}>
+        <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
           {message.type === 'error' ? (
-            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertCircle className="h-4 w-4" />
           ) : (
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CheckCircle className="h-4 w-4" />
           )}
-          <AlertDescription className={message.type === 'error' ? 'text-red-700' : 'text-green-700'}>
-            {message.text}
-          </AlertDescription>
+          <AlertDescription>{message.text}</AlertDescription>
         </Alert>
       )}
 
-      <Tabs defaultValue="pricing" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="pricing">Pricing</TabsTrigger>
-          <TabsTrigger value="printing">Printing</TabsTrigger>
-          <TabsTrigger value="files">Files</TabsTrigger>
-          <TabsTrigger value="business">Business</TabsTrigger>
+      <Tabs defaultValue="business" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="business">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Business Settings
+          </TabsTrigger>
+          <TabsTrigger value="materials">
+            <Package className="h-4 w-4 mr-2" />
+            Materials
+          </TabsTrigger>
+          <TabsTrigger value="printers">
+            <Printer className="h-4 w-4 mr-2" />
+            Printers
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pricing" className="space-y-6">
+        <TabsContent value="business" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Pricing Configuration
-              </CardTitle>
+              <CardTitle>Pricing & Business Settings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="profit-margin">Profit Margin (%)</Label>
-                  <Input
-                    id="profit-margin"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={(settings.profitMargin * 100).toFixed(1)}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      profitMargin: parseFloat(e.target.value) / 100
-                    }))}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Current margin: {(settings.profitMargin * 100).toFixed(1)}% 
-                    (${(settings.profitMargin * 10).toFixed(2)} profit per $10 material cost)
+              <div className="grid gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profit-margin">Default Profit Margin</Label>
+                  <div className="flex items-center space-x-4">
+                    <Input
+                      id="profit-margin"
+                      type="number"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={businessSettings.profitMargin}
+                      onChange={(e) => setBusinessSettings(prev => ({
+                        ...prev,
+                        profitMargin: parseFloat(e.target.value) || 0
+                      }))}
+                      className="max-w-[200px]"
+                    />
+                    <Badge variant="secondary">
+                      {formatPercentage(businessSettings.profitMargin)}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    The default profit margin applied to all quotes (0.35 = 35%)
                   </p>
                 </div>
 
-                <div>
-                  <Label htmlFor="tax-rate">Tax Rate (%)</Label>
-                  <Input
-                    id="tax-rate"
-                    type="number"
-                    min="0"
-                    max="50"
-                    step="0.1"
-                    value={(settings.taxRate * 100).toFixed(1)}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      taxRate: parseFloat(e.target.value) / 100
-                    }))}
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="currency">Currency</Label>
-                  <Select 
-                    value={settings.currency} 
-                    onValueChange={(value) => setSettings(prev => ({ ...prev, currency: value }))}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD ($)</SelectItem>
-                      <SelectItem value="EUR">EUR (€)</SelectItem>
-                      <SelectItem value="GBP">GBP (£)</SelectItem>
-                      <SelectItem value="CAD">CAD (C$)</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2">
+                  <Label>Preview Pricing Impact</Label>
+                  <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Base Cost:</span>
+                        <span className="ml-2">{formatCurrency(100)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Profit Margin:</span>
+                        <span className="ml-2">{formatPercentage(businessSettings.profitMargin)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Profit Amount:</span>
+                        <span className="ml-2">{formatCurrency(100 * businessSettings.profitMargin)}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium">Final Price:</span>
+                        <span className="ml-2 font-bold">{formatCurrency(100 + (100 * businessSettings.profitMargin))}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Pricing Preview */}
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium mb-2">Pricing Preview Example</h4>
-                <div className="text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span>Material Cost:</span>
-                    <span>$10.00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Labor Cost:</span>
-                    <span>$5.00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Base Cost:</span>
-                    <span>$15.00</span>
-                  </div>
-                  <div className="flex justify-between text-green-600">
-                    <span>Profit ({(settings.profitMargin * 100).toFixed(1)}%):</span>
-                    <span>+${(15 * settings.profitMargin).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>${(15 * (1 + settings.profitMargin)).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax ({(settings.taxRate * 100).toFixed(1)}%):</span>
-                    <span>+${(15 * (1 + settings.profitMargin) * settings.taxRate).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold border-t pt-1">
-                    <span>Total:</span>
-                    <span>${(15 * (1 + settings.profitMargin) * (1 + settings.taxRate)).toFixed(2)}</span>
-                  </div>
-                </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={saveBusinessSettings} 
+                  disabled={saving}
+                  className="w-auto"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save Settings'}
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="printing" className="space-y-6">
+        <TabsContent value="materials" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Printer className="h-5 w-5" />
-                Printing Configuration
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Materials Catalog</CardTitle>
+              <Button onClick={loadMaterials} variant="outline" size="sm">
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingMaterials ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="print-speed">Default Print Speed</Label>
-                  <Select 
-                    value={settings.defaultPrintSpeed} 
-                    onValueChange={(value) => setSettings(prev => ({ ...prev, defaultPrintSpeed: value }))}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Draft (Fast, Lower Quality)</SelectItem>
-                      <SelectItem value="standard">Standard (Balanced)</SelectItem>
-                      <SelectItem value="fine">Fine (Slow, High Quality)</SelectItem>
-                    </SelectContent>
-                  </Select>
+            <CardContent>
+              {loadingMaterials ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="auto-approval">Auto Quote Approval</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Automatically approve quotes under $50
-                    </p>
-                  </div>
-                  <Switch
-                    id="auto-approval"
-                    checked={settings.autoQuoteApproval}
-                    onCheckedChange={(checked) => setSettings(prev => ({ ...prev, autoQuoteApproval: checked }))}
-                  />
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Color</TableHead>
+                        <TableHead>Price per Gram</TableHead>
+                        <TableHead>Density</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {materials.map((material) => (
+                        <TableRow key={material.id}>
+                          <TableCell className="font-medium">
+                            {material.name}
+                          </TableCell>
+                          <TableCell>{material.type}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-4 h-4 rounded border"
+                                style={{ backgroundColor: material.color }}
+                              />
+                              {material.color}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(material.price_per_gram)}
+                          </TableCell>
+                          <TableCell>
+                            {material.density} g/cm³
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={material.available ? 'default' : 'secondary'}
+                            >
+                              {material.available ? 'Available' : 'Unavailable'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {materials.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            No materials found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
-
-              {/* Bambu Lab Printer Settings */}
-              <div className="space-y-4">
-                <h4 className="font-medium">Bambu Lab Printer Configuration</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <h5 className="font-medium">A1 Mini Settings</h5>
-                    <div className="text-sm text-muted-foreground mt-2">
-                      <div>Build Volume: 180×180×180mm</div>
-                      <div>Layer Height: 0.2mm default</div>
-                      <div>Print Speed: 300mm/s max</div>
-                    </div>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <h5 className="font-medium">X1 Carbon Settings</h5>
-                    <div className="text-sm text-muted-foreground mt-2">
-                      <div>Build Volume: 256×256×256mm</div>
-                      <div>Layer Height: 0.1-0.3mm</div>
-                      <div>Print Speed: 500mm/s max</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="files" className="space-y-6">
+        <TabsContent value="printers" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                File Management
-              </CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Printer Fleet</CardTitle>
+              <Button onClick={loadPrinters} variant="outline" size="sm">
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingPrinters ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="max-file-size">Maximum File Size (MB)</Label>
-                  <Input
-                    id="max-file-size"
-                    type="number"
-                    min="1"
-                    max="1000"
-                    value={settings.maxFileSize}
-                    onChange={(e) => setSettings(prev => ({
-                      ...prev,
-                      maxFileSize: parseInt(e.target.value)
-                    }))}
-                    className="mt-1"
-                  />
+            <CardContent>
+              {loadingPrinters ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
                 </div>
-              </div>
-
-              <div>
-                <Label>Supported File Formats</Label>
-                <div className="mt-2 space-y-2">
-                  {['stl', 'obj', '3mf', 'ply', 'gcode'].map((format) => (
-                    <div key={format} className="flex items-center space-x-2">
-                      <Switch
-                        id={format}
-                        checked={settings.supportedFormats.includes(format)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setSettings(prev => ({
-                              ...prev,
-                              supportedFormats: [...prev.supportedFormats, format]
-                            }))
-                          } else {
-                            setSettings(prev => ({
-                              ...prev,
-                              supportedFormats: prev.supportedFormats.filter(f => f !== format)
-                            }))
-                          }
-                        }}
-                      />
-                      <Label htmlFor={format} className="text-sm uppercase">
-                        .{format}
-                      </Label>
-                    </div>
-                  ))}
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Model</TableHead>
+                        <TableHead>Max Dimensions</TableHead>
+                        <TableHead>Hourly Rate</TableHead>
+                        <TableHead>Setup Cost</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {printers.map((printer) => (
+                        <TableRow key={printer.id}>
+                          <TableCell className="font-medium">
+                            {printer.name}
+                          </TableCell>
+                          <TableCell>{printer.model}</TableCell>
+                          <TableCell>
+                            {printer.max_dimensions ? (
+                              <span className="text-sm font-mono">
+                                {printer.max_dimensions.x} × {printer.max_dimensions.y} × {printer.max_dimensions.z} mm
+                              </span>
+                            ) : (
+                              'N/A'
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(printer.hourly_rate)}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(printer.setup_cost)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={printer.is_active ? 'default' : 'secondary'}
+                            >
+                              {printer.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {printers.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8">
+                            No printers found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="business" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Business Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="business-hours">Business Hours</Label>
-                  <Input
-                    id="business-hours"
-                    value={settings.businessHours}
-                    onChange={(e) => setSettings(prev => ({ ...prev, businessHours: e.target.value }))}
-                    placeholder="9:00 AM - 6:00 PM"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="contact-email">Contact Email</Label>
-                  <Input
-                    id="contact-email"
-                    type="email"
-                    value={settings.contactEmail}
-                    onChange={(e) => setSettings(prev => ({ ...prev, contactEmail: e.target.value }))}
-                    placeholder="admin@3dprinting.com"
-                    className="mt-1"
-                  />
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* System Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle>System Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <Label className="text-muted-foreground">Total Materials</Label>
+              <div className="text-2xl font-bold">{materials.length}</div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Active Printers</Label>
+              <div className="text-2xl font-bold">
+                {printers.filter(p => p.is_active).length}
+              </div>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Current Profit Margin</Label>
+              <div className="text-2xl font-bold">
+                {formatPercentage(businessSettings.profitMargin)}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
